@@ -1,0 +1,692 @@
+import { Request, Response } from "express";
+import { db } from "../db/db";
+import { projects, dossierConfig, projectMembers, auditLogs, packageArchives, projectDocuments, companyMembers } from "../db/schema";
+import { createProjectSchema, updateDossierDataSchema } from "../validators/project.validator";
+import { parseIdParam, resolveProjectId } from "../utils/params.util";
+import { deleteMultipleFromR2 } from "../services/r2.service";
+import { eq, and, desc, isNotNull, sql, count, inArray, ne } from "drizzle-orm";
+import { CacheService, CacheKeys } from "../lib/cache";
+
+import crypto from "crypto";
+
+/**
+ * GET /api/projects
+ * Fetch all projects from database.
+ */
+export async function getProjects(req: Request, res: Response): Promise<void> {
+  try {
+    const page = Math.max(1, parseInt(req.query.page as string) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 10));
+    const offset = (page - 1) * limit;
+
+    const companyFilter =
+      req.user?.role !== "superadmin" && req.user?.companyId != null
+        ? eq(projects.companyId, req.user.companyId)
+        : undefined;
+
+    const [projectsList, countResult] = await Promise.all([
+      db.query.projects.findMany({
+        where: companyFilter,
+        with: { dossierConfig: true, dossierConfigs: true },
+        orderBy: [desc(projects.createdAt)],
+        limit,
+        offset,
+      }),
+      db.select({ count: count() }).from(projects).where(companyFilter),
+    ]);
+
+    const totalCount = Number(countResult[0]?.count || 0);
+
+    const projectIds = projectsList.map((p) => p.id);
+    const sizeMap: Record<string, number> = {};
+
+    if (projectIds.length > 0) {
+      const sizes = await db
+        .select({
+          projectId: projectDocuments.projectId,
+          totalSize: sql<string>`COALESCE(SUM(${projectDocuments.fileSize}), 0)`,
+        })
+        .from(projectDocuments)
+        .where(
+          and(
+            inArray(projectDocuments.projectId, projectIds),
+            eq(projectDocuments.status, "active")
+          )
+        )
+        .groupBy(projectDocuments.projectId);
+
+      for (const row of sizes) {
+        sizeMap[row.projectId] = Number(row.totalSize || 0);
+      }
+    }
+
+    const projectsWithVolume = projectsList.map((p) => {
+      const activeConfig = p.dossierConfigs?.find((c) => c.isDossierSaved) || p.dossierConfig;
+      return {
+        ...p,
+        dossierConfig: activeConfig,
+        totalFileSizeBytes: sizeMap[p.id] || 0,
+        dossierSize: sizeMap[p.id] || 0,
+      };
+    });
+
+    res.status(200).json({
+      success: true,
+      count: projectsWithVolume.length,
+      data: projectsWithVolume,
+      pagination: {
+        total: totalCount,
+        page,
+        limit,
+        totalPages: Math.ceil(totalCount / limit)
+      }
+    });
+  } catch (error: any) {
+    console.error("[Get Projects Error]", error);
+    res.status(500).json({ success: false, message: "Failed to fetch projects" });
+  }
+}
+
+/**
+ * POST /api/projects
+ * Create a new project, auto-generate a unique project code, initialize a default dossier_config row ('Sequence 0000'),
+ * assign creator as owner, and log audit entry.
+ */
+export async function createProject(req: Request, res: Response): Promise<void> {
+  try {
+    const parseResult = createProjectSchema.safeParse(req.body);
+    if (!parseResult.success) {
+      res.status(400).json({ success: false, errors: parseResult.error.flatten() });
+      return;
+    }
+
+    const input = parseResult.data;
+    const projectCode = crypto.randomUUID();
+    const currentUser = req.user;
+
+    const result = await db.transaction(async (tx) => {
+      let companyId: string | null = currentUser?.companyId ?? null;
+      if (!companyId && currentUser && currentUser.id) {
+        const [membership] = await tx
+          .select({ companyId: companyMembers.companyId })
+          .from(companyMembers)
+          .where(eq(companyMembers.userId, currentUser.id))
+          .limit(1);
+        if (membership) {
+          companyId = membership.companyId;
+        }
+      }
+
+      const [newProject] = await tx
+        .insert(projects)
+        .values({
+          companyId,
+          projectCode,
+          productName: input.productName,
+          dosageForm: input.dosageForm,
+          productType: input.productType,
+          manufacturer: input.manufacturer,
+          mahHolder: input.mahHolder,
+          responsibleUser: input.responsibleUser || currentUser?.email || "System User",
+          tariff: input.tariff || "Tariff OWN",
+          additionalFeature: input.additionalFeature || "Standard",
+          status: "Active",
+          isProjectSaved: true,
+        })
+        .returning();
+
+      const [newConfig] = await tx
+        .insert(dossierConfig)
+        .values({
+          projectId: newProject.id,
+          submissionCountry: input.submissionCountry || "KAZAKHSTAN",
+          role: input.role,
+          procedureType: input.procedureType,
+          typeOfProcedure: input.typeOfProcedure,
+          applicationNumber: input.applicationNumber || "",
+          dossierSequence: input.dossierSequence || "Sequence 0000",
+          isDossierSaved: false,
+        })
+        .returning();
+
+      if (currentUser?.id) {
+        await tx.insert(projectMembers).values({
+          projectId: newProject.id,
+          userId: currentUser.id,
+          role: "owner",
+        });
+      }
+
+      await tx.insert(auditLogs).values({
+        projectId: newProject.id,
+        logType: "SUCCESS",
+        message: `Project ${projectCode} (${input.productName}) created and dossier sequence initialized to '${newConfig.dossierSequence}'.`,
+        userCredentials: currentUser ? `${currentUser.email} (${currentUser.role})` : "System",
+      });
+
+      return { project: newProject, config: newConfig };
+    });
+
+    res.status(201).json({
+      success: true,
+      data: result,
+      message: "Project created successfully",
+    });
+  } catch (error: any) {
+    console.error("[Create Project Error]", error);
+    res.status(500).json({ success: false, message: error.message || "Failed to create project" });
+  }
+}
+
+/**
+ * GET /api/projects/:id/dossier-data
+ */
+export async function getDossierData(req: Request, res: Response): Promise<void> {
+  try {
+    const projectId = await resolveProjectId(req.params.id);
+    if (!projectId) {
+      res.status(400).json({ success: false, message: "Invalid project ID or code" });
+      return;
+    }
+
+    const cacheKey = CacheKeys.projectDossier(projectId);
+    const cachedData = await CacheService.get<any>(cacheKey);
+
+    if (cachedData) {
+      res.status(200).json({ success: true, data: cachedData, cached: true });
+      return;
+    }
+
+    const projectData = await db.query.projects.findFirst({
+      where: eq(projects.id, projectId),
+      with: {
+        dossierConfig: true,
+        documents: true,
+        members: {
+          with: {
+            user: {
+              columns: {
+                id: true,
+                name: true,
+                email: true,
+                role: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!projectData) {
+      res.status(404).json({ success: false, message: "Project not found" });
+      return;
+    }
+
+    if (
+      req.user?.role !== "superadmin" &&
+      projectData.companyId !== req.user?.companyId
+    ) {
+      res.status(403).json({ success: false, message: "Forbidden: You do not have access to this project." });
+      return;
+    }
+
+    const allConfigs = await db.query.dossierConfig.findMany({
+      where: eq(dossierConfig.projectId, projectId),
+      orderBy: [desc(dossierConfig.isDossierSaved), desc(dossierConfig.id)],
+    });
+
+    const { dossierConfig: config, documents, ...project } = projectData;
+
+    // Filter only active documents to prevent superseded/deleted files from inflating dossier size
+    const activeDocs = (documents || []).filter((doc: any) => doc.status === "active");
+    const totalFileSize = activeDocs.reduce((sum: number, doc: any) => sum + (Number(doc.fileSize) || 0), 0);
+
+    const configsWithSize = allConfigs.map((cfg) => {
+      const cfgActiveSize = activeDocs
+        .filter((d: any) => d.dossierConfigId === cfg.id || (!d.dossierConfigId && cfg.id === allConfigs[0]?.id))
+        .reduce((sum: number, doc: any) => sum + (Number(doc.fileSize) || 0), 0);
+      return {
+        ...cfg,
+        dossierSize: cfgActiveSize,
+      };
+    });
+
+    const savedConfig = configsWithSize.find((c) => c.isDossierSaved);
+    const primaryConfig = savedConfig || configsWithSize[0] || config || null;
+
+    const responseData = {
+      project,
+      dossierConfig: primaryConfig,
+      dossierConfigs: configsWithSize,
+      dossierSize: totalFileSize,
+    };
+
+    await CacheService.set(cacheKey, responseData, 30); // 30 seconds TTL
+
+    res.status(200).json({
+      success: true,
+      data: responseData,
+    });
+  } catch (error: any) {
+    console.error("[Get Dossier Data Error]", error);
+    res.status(500).json({ success: false, message: "Failed to fetch dossier data" });
+  }
+}
+
+/**
+ * PUT /api/projects/:id/dossier-data & PUT /api/projects/:id
+ */
+export async function updateDossierData(req: Request, res: Response): Promise<void> {
+  try {
+    const projectId = await resolveProjectId(req.params.id);
+    if (!projectId) {
+      res.status(400).json({ success: false, message: "Invalid project ID or code" });
+      return;
+    }
+
+    const parseResult = updateDossierDataSchema.safeParse(req.body);
+    if (!parseResult.success) {
+      res.status(400).json({ success: false, errors: parseResult.error.flatten() });
+      return;
+    }
+
+    const input = parseResult.data;
+    const currentUser = req.user;
+
+    const existingProject = await db.query.projects.findFirst({
+      where: eq(projects.id, projectId),
+      with: { dossierConfig: true },
+    });
+
+    if (!existingProject) {
+      res.status(404).json({ success: false, message: "Project not found" });
+      return;
+    }
+
+    if (
+      req.user?.role !== "superadmin" &&
+      existingProject.companyId !== req.user?.companyId
+    ) {
+      res.status(403).json({ success: false, message: "Forbidden: You do not have access to this project." });
+      return;
+    }
+
+    // Optimistic Concurrency Control Check
+    if (input.version !== undefined && existingProject.version !== input.version) {
+      res.status(409).json({
+        success: false,
+        message: "Conflict: Dossier metadata has been modified by another team member. Please refresh and try again.",
+        currentVersion: existingProject.version,
+      });
+      return;
+    }
+
+    const nextVersion = existingProject.version + 1;
+
+    const updatedData = await db.transaction(async (tx) => {
+      // Build dynamic project update payload
+      const projectPayload: Record<string, any> = {
+        version: nextVersion,
+        updatedAt: new Date(),
+      };
+      if (input.productName !== undefined) projectPayload.productName = input.productName;
+      if (input.dosageForm !== undefined) projectPayload.dosageForm = input.dosageForm;
+      if (input.productType !== undefined) projectPayload.productType = input.productType;
+      if (input.manufacturer !== undefined) projectPayload.manufacturer = input.manufacturer;
+      if (input.mahHolder !== undefined) projectPayload.mahHolder = input.mahHolder;
+      if (input.responsibleUser !== undefined) projectPayload.responsibleUser = input.responsibleUser;
+      if (input.tariff !== undefined) projectPayload.tariff = input.tariff;
+      if (input.additionalFeature !== undefined) projectPayload.additionalFeature = input.additionalFeature;
+      if (input.status !== undefined) projectPayload.status = input.status;
+
+      const hasProjectFields =
+        input.productName !== undefined ||
+        input.dosageForm !== undefined ||
+        input.productType !== undefined ||
+        input.manufacturer !== undefined ||
+        input.mahHolder !== undefined ||
+        input.responsibleUser !== undefined ||
+        input.tariff !== undefined ||
+        input.additionalFeature !== undefined;
+
+      if (hasProjectFields) {
+        projectPayload.isProjectSaved = true;
+      }
+
+      const [updatedProject] = await tx
+        .update(projects)
+        .set(projectPayload)
+        .where(eq(projects.id, projectId))
+        .returning();
+
+      // Check if dossier config fields are provided
+      const hasConfigFields =
+        input.submissionCountry !== undefined ||
+        input.role !== undefined ||
+        input.procedureType !== undefined ||
+        input.typeOfProcedure !== undefined ||
+        input.applicationNumber !== undefined ||
+        input.dossierSequence !== undefined ||
+        input.dossierDetails !== undefined;
+
+      let updatedConfig = existingProject.dossierConfig || null;
+
+      if (hasConfigFields) {
+        let existingConfigForId = null;
+        if (input.dossierConfigId) {
+          existingConfigForId = await tx.query.dossierConfig.findFirst({
+            where: and(eq(dossierConfig.id, input.dossierConfigId), eq(dossierConfig.projectId, projectId)),
+          });
+        } else if (!input.createNewDossier && existingProject.dossierConfig) {
+          existingConfigForId = existingProject.dossierConfig;
+        }
+
+        const mergedDetails = input.dossierDetails !== undefined
+          ? {
+            ...((existingConfigForId?.dossierDetails as Record<string, any>) || {}),
+            ...input.dossierDetails,
+          }
+          : undefined;
+
+        const configFields: Record<string, any> = {
+          isDossierSaved: true,
+          ...(input.submissionCountry !== undefined ? { submissionCountry: input.submissionCountry } : {}),
+          ...(input.role !== undefined ? { role: input.role } : {}),
+          ...(input.procedureType !== undefined ? { procedureType: input.procedureType } : {}),
+          ...(input.typeOfProcedure !== undefined ? { typeOfProcedure: input.typeOfProcedure } : {}),
+          ...(input.applicationNumber !== undefined ? { applicationNumber: input.applicationNumber } : {}),
+          ...(input.dossierSequence !== undefined ? { dossierSequence: input.dossierSequence } : {}),
+          ...(mergedDetails !== undefined ? { dossierDetails: mergedDetails } : {}),
+        };
+
+        if (!input.createNewDossier && existingConfigForId) {
+          const [conf] = await tx
+            .update(dossierConfig)
+            .set(configFields)
+            .where(eq(dossierConfig.id, existingConfigForId.id))
+            .returning();
+          updatedConfig = conf;
+        } else {
+          // If creating a new dossier, first check if an unsaved placeholder config already exists
+          // (such as the default created by createProject). If so, update that placeholder instead of
+          // creating an extra duplicate empty row in the database.
+          const unsavedPlaceholder = await tx.query.dossierConfig.findFirst({
+            where: and(
+              eq(dossierConfig.projectId, projectId),
+              eq(dossierConfig.isDossierSaved, false)
+            ),
+          });
+
+          if (unsavedPlaceholder) {
+            const [conf] = await tx
+              .update(dossierConfig)
+              .set({
+                ...configFields,
+                submissionCountry: input.submissionCountry || unsavedPlaceholder.submissionCountry || "KAZAKHSTAN",
+                role: input.role || unsavedPlaceholder.role || "Reference Member State (RMS)",
+                procedureType: input.procedureType || unsavedPlaceholder.procedureType || "Mutual Recognition (MRP)",
+                typeOfProcedure: input.typeOfProcedure || unsavedPlaceholder.typeOfProcedure || "Bringing into conformity",
+                applicationNumber: input.applicationNumber ?? unsavedPlaceholder.applicationNumber ?? "",
+                dossierSequence: input.dossierSequence || unsavedPlaceholder.dossierSequence || "Sequence 0000",
+                isDossierSaved: true,
+                dossierDetails: input.dossierDetails || mergedDetails || null,
+              })
+              .where(eq(dossierConfig.id, unsavedPlaceholder.id))
+              .returning();
+            updatedConfig = conf;
+          } else {
+            const [conf] = await tx
+              .insert(dossierConfig)
+              .values({
+                projectId,
+                submissionCountry: input.submissionCountry || "KAZAKHSTAN",
+                role: input.role || "Reference Member State (RMS)",
+                procedureType: input.procedureType || "Mutual Recognition (MRP)",
+                typeOfProcedure: input.typeOfProcedure || "Bringing into conformity",
+                applicationNumber: input.applicationNumber || "",
+                dossierSequence: input.dossierSequence || "Sequence 0000",
+                isDossierSaved: true,
+                dossierDetails: input.dossierDetails || mergedDetails || null,
+              })
+              .returning();
+            updatedConfig = conf;
+          }
+        }
+
+        // Clean up any other remaining unsaved empty placeholder rows for this project so no duplicates linger
+        if (updatedConfig) {
+          await tx
+            .delete(dossierConfig)
+            .where(
+              and(
+                eq(dossierConfig.projectId, projectId),
+                eq(dossierConfig.isDossierSaved, false),
+                ne(dossierConfig.id, updatedConfig.id)
+              )
+            );
+        }
+      }
+
+      const allConfigs = await tx.query.dossierConfig.findMany({
+        where: eq(dossierConfig.projectId, projectId),
+        orderBy: [desc(dossierConfig.isDossierSaved), desc(dossierConfig.id)],
+      });
+
+      const activeDocs = await tx.query.projectDocuments.findMany({
+        where: and(eq(projectDocuments.projectId, projectId), eq(projectDocuments.status, "active")),
+      });
+
+      const totalFileSize = activeDocs.reduce((sum: number, doc: any) => sum + (Number(doc.fileSize) || 0), 0);
+
+      const configsWithSize = allConfigs.map((cfg) => {
+        const cfgActiveSize = activeDocs
+          .filter((d: any) => d.dossierConfigId === cfg.id || (!d.dossierConfigId && cfg.id === allConfigs[0]?.id))
+          .reduce((sum: number, doc: any) => sum + (Number(doc.fileSize) || 0), 0);
+        return {
+          ...cfg,
+          dossierSize: cfgActiveSize,
+        };
+      });
+
+      await tx.insert(auditLogs).values({
+        projectId,
+        logType: "SUCCESS",
+        message: `Project & Dossier metadata updated to version ${nextVersion}.`,
+        userCredentials: currentUser ? `${currentUser.email} (${currentUser.role})` : "System",
+      });
+
+      return {
+        project: updatedProject,
+        dossierConfig: configsWithSize.find((c) => c.id === updatedConfig?.id) || configsWithSize.find((c) => c.isDossierSaved) || configsWithSize[0] || updatedConfig,
+        dossierConfigs: configsWithSize,
+        dossierSize: totalFileSize,
+      };
+    });
+
+    await CacheService.del(CacheKeys.projectDossier(projectId));
+
+    res.status(200).json({
+      success: true,
+      data: updatedData,
+      message: "Dossier data updated successfully",
+    });
+  } catch (error: any) {
+    console.error("[Update Dossier Data Error]", error);
+    res.status(500).json({ success: false, message: error.message || "Failed to update project" });
+  }
+}
+
+export const updateProject = updateDossierData;
+
+/**
+ * DELETE /api/projects/:id
+ * Deletes a project and all associated cascade records:
+ * - Product Metadata (projects table)
+ * - Dossier Data & Configuration (dossier_config table)
+ * - Dossier History (audit_logs table)
+ * - XML Creation History (package_archives table)
+ * - Project Documents & ImageKit Cloud Assets (project_documents table)
+ * - Project Team Members (project_members table)
+ */
+export async function deleteProject(req: Request, res: Response): Promise<void> {
+  try {
+    const projectId = await resolveProjectId(req.params.id);
+    if (!projectId) {
+      res.status(400).json({ success: false, message: "Invalid project ID or code" });
+      return;
+    }
+
+    // Check if project exists
+    const existingProject = await db.query.projects.findFirst({
+      where: eq(projects.id, projectId),
+    });
+
+    if (!existingProject) {
+      res.status(404).json({ success: false, message: "Project not found" });
+      return;
+    }
+
+    if (
+      req.user?.role !== "superadmin" &&
+      existingProject.companyId !== req.user?.companyId
+    ) {
+      res.status(403).json({ success: false, message: "Forbidden: You do not have access to this project." });
+      return;
+    }
+
+    // Collect all R2 storage keys (both individual dossier documents and compiled ZIP archives)
+    const [docRecords, archiveRecords] = await Promise.all([
+      db.query.projectDocuments.findMany({
+        where: eq(projectDocuments.projectId, projectId),
+        columns: { storageKey: true },
+      }),
+      db.query.packageArchives.findMany({
+        where: eq(packageArchives.projectId, projectId),
+        columns: { storageKey: true },
+      }),
+    ]);
+
+    const storageKeys = [
+      ...docRecords.map((d) => d.storageKey),
+      ...archiveRecords.map((a) => a.storageKey),
+    ].filter((key): key is string => Boolean(key));
+
+    // Perform full atomic transaction across all associated tables
+    const deletedProject = await db.transaction(async (tx) => {
+      // 1. Delete Dossier History (audit_logs)
+      await tx.delete(auditLogs).where(eq(auditLogs.projectId, projectId));
+
+      // 2. Delete XML Creation History (package_archives)
+      await tx.delete(packageArchives).where(eq(packageArchives.projectId, projectId));
+
+      // 3. Delete Project Documents (project_documents)
+      await tx.delete(projectDocuments).where(eq(projectDocuments.projectId, projectId));
+
+      // 4. Delete Dossier Data & Configuration (dossier_config)
+      await tx.delete(dossierConfig).where(eq(dossierConfig.projectId, projectId));
+
+      // 5. Delete Project Team Members (project_members)
+      await tx.delete(projectMembers).where(eq(projectMembers.projectId, projectId));
+
+      // 6. Delete Project & Product Metadata (projects)
+      const [deleted] = await tx
+        .delete(projects)
+        .where(eq(projects.id, projectId))
+        .returning();
+
+      return deleted;
+    });
+
+    // Asynchronously delete cloud storage assets (ImageKit) without blocking response
+    if (storageKeys.length > 0) {
+      deleteMultipleFromR2(storageKeys).catch((err) => {
+        console.warn("[Delete Project] Cloud asset cleanup warning:", err);
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: {
+        id: deletedProject.id,
+        projectCode: deletedProject.projectCode,
+        productName: deletedProject.productName,
+      },
+      message: `Project ${deletedProject.productName} (${deletedProject.projectCode}) and all associated product metadata, dossier data, configuration, dossier history, and XML creation history were deleted successfully.`,
+    });
+    await CacheService.del(CacheKeys.projectDossier(projectId));
+  } catch (error: any) {
+    console.error("[Delete Project Error]", error);
+    res.status(500).json({ success: false, message: error.message || "Failed to delete project" });
+  }
+}
+
+/**
+ * DELETE /api/projects/:id/dossier-config
+ * Resets (clears) the dossier configuration for a project back to defaults.
+ * This does not delete the project itself — only wipes the dossier metadata.
+ */
+export async function deleteDossierConfig(req: Request, res: Response): Promise<void> {
+  try {
+    const projectId = await resolveProjectId(req.params.id);
+    if (!projectId) {
+      res.status(400).json({ success: false, message: "Invalid project ID or code" });
+      return;
+    }
+
+    const currentUser = req.user;
+
+    const existingProject = await db.query.projects.findFirst({
+      where: eq(projects.id, projectId),
+    });
+
+    if (!existingProject) {
+      res.status(404).json({ success: false, message: "Project not found" });
+      return;
+    }
+
+    if (
+      currentUser?.role !== "superadmin" &&
+      existingProject.companyId !== currentUser?.companyId
+    ) {
+      res.status(403).json({ success: false, message: "Forbidden: You do not have access to this project." });
+      return;
+    }
+    const rawTargetId = req.params.dossierConfigId || (typeof req.query.dossierConfigId === "string" ? req.query.dossierConfigId : null) || req.body?.dossierConfigId;
+    const targetConfigId = rawTargetId ? String(rawTargetId) : null;
+
+    if (targetConfigId) {
+      await db
+        .delete(dossierConfig)
+        .where(and(eq(dossierConfig.id, targetConfigId), eq(dossierConfig.projectId, projectId)));
+    } else {
+      const existingConfig = await db.query.dossierConfig.findFirst({
+        where: eq(dossierConfig.projectId, projectId),
+      });
+      if (existingConfig) {
+        await db.delete(dossierConfig).where(eq(dossierConfig.id, existingConfig.id));
+      }
+    }
+
+    const remainingConfigs = await db.query.dossierConfig.findMany({
+      where: eq(dossierConfig.projectId, projectId),
+    });
+
+    await db.insert(auditLogs).values({
+      projectId,
+      logType: "WARNING",
+      message: `Dossier configuration was deleted.`,
+      userCredentials: currentUser ? `${currentUser.email} (${currentUser.role})` : "System",
+    });
+
+    res.status(200).json({
+      success: true,
+      data: { remainingConfigs },
+      message: "Dossier configuration deleted successfully",
+    });
+    await CacheService.del(CacheKeys.projectDossier(projectId));
+  } catch (error: any) {
+    console.error("[Delete Dossier Config Error]", error);
+    res.status(500).json({ success: false, message: error.message || "Failed to delete dossier configuration" });
+  }
+}
+

@@ -1,0 +1,63 @@
+import multer from "multer";
+import { Request, Response, NextFunction } from "express";
+
+const multiOrSingleUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { files: 1 }, // max 1 file, no artificial file size limit
+}).fields([
+  { name: "file", maxCount: 1 },
+  { name: "document", maxCount: 1 },
+  { name: "attachment", maxCount: 1 },
+  { name: "avatar", maxCount: 1 },
+]);
+
+/**
+ * Multer parses file names from the HTTP Content-Disposition header as Latin-1 (ISO-8859-1).
+ * This wrapper re-decodes req.file.originalname as UTF-8 so that non-ASCII names
+ * (Cyrillic, Chinese, etc.) are stored correctly instead of appearing garbled.
+ * Supports specific allowed field names ('file', 'document', 'attachment', 'avatar').
+ */
+export function uploadMiddleware(req: Request, res: Response, next: NextFunction): void {
+  multiOrSingleUpload(req, res, (err: any) => {
+    if (err instanceof multer.MulterError) {
+      if (err.code === "LIMIT_FILE_SIZE") {
+        res.status(413).json({
+          success: false,
+          message: "Payload Too Large: Uploaded file exceeds maximum allowed limit.",
+        });
+        return;
+      }
+      res.status(400).json({
+        success: false,
+        message: `File upload error: ${err.message}`,
+      });
+      return;
+    } else if (err) {
+      res.status(500).json({
+        success: false,
+        message: `Server error processing file upload: ${err.message}`,
+      });
+      return;
+    }
+
+    // Normalize single file from req.files dictionary if req.file is not set directly
+    if (!req.file && req.files) {
+      if (Array.isArray(req.files) && req.files.length > 0) {
+        req.file = req.files[0];
+      } else if (typeof req.files === "object") {
+        const fileArray = Object.values(req.files as Record<string, Express.Multer.File[]>).flat();
+        if (fileArray.length > 0) {
+          req.file = fileArray[0];
+        }
+      }
+    }
+
+    // Re-decode filename: multer reads Content-Disposition as Latin-1; convert to UTF-8
+    if (req.file) {
+      req.file.originalname = Buffer.from(req.file.originalname, "latin1").toString("utf8");
+    }
+
+    next();
+  });
+}
+

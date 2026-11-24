@@ -1,0 +1,215 @@
+@import "tailwindcss";
+
+@variant dark (&:where(.dark, [data-theme="dark"], .dark *));
+
+@plugin "daisyui" {
+  themes: dark, light;
+}
+
+/* 1. Default (Dark Navy Theme) Variables */
+:root,
+:root[data-theme="dark"],
+html.dark,
+html[data-theme="dark"] {
+  --color-bg: #121824;
+  --color-surface: #192131;
+  --color-surface-raised: #202A3E;
+  --color-border: #243045;
+  --color-border-strong: #33435C;
+  --color-primary: #E2E8F0;
+  --color-primary-dark: #0F1318;
+  --color-primary-mid: #253246;
+  --color-secondary: #94A3B8;
+  --color-muted: #64748B;
+  --color-accent: #0284C7;
+  --color-accent-hover: #0369A1;
+  --color-accent-light: #16263D;
+  --color-accent-border: #1E3A5F;
+  --color-text-on-accent: #FFFFFF;
+  --color-success: #10B981;
+  --color-error: #EF4444;
+  --color-warning: #F59E0B;
+
+  --font-lexend: var(--font-lexend), ui-sans-serif, system-ui, sans-serif;
+  --font-source-sans: var(--font-source-sans), ui-sans-serif, system-ui, sans-serif;
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
+  --shadow-focus: 0 0 0 3px rgba(2, 132, 199, 0.3);
+}
+
+/* 2. Light (White Theme) Overrides */
+html[data-theme="light"],
+html.light {
+  --color-bg: #F8FAFC !important;
+  --color-surface: #FFFFFF !important;
+  --color-surface-raised: #F1F5F9 !important;
+  --color-border: #E2E8F0 !important;
+  --color-border-strong: #CBD5E1 !important;
+  --color-primary: #0F172A !important;
+  --color-primary-dark: #FFFFFF !important;
+  --color-primary-mid: #E2E8F0 !important;
+  --color-secondary: #475569 !important;
+  --color-muted: #64748B !important;
+  --color-accent: #0284C7 !important;
+  --color-accent-hover: #0369A1 !important;
+  --color-accent-light: #E0F2FE !important;
+  --color-accent-border: #BAE6FD !important;
+  --color-text-on-accent: #FFFFFF !important;
+  --color-success: #10B981 !important;
+  --color-error: #DC2626 !important;
+  --color-warning: #F59E0B !important;
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.12);
+  --shadow-focus: 0 0 0 3px rgba(2, 132, 199, 0.25);
+}
+
+/* 3. Scoped Dark Theme (Enforces Dark Navy on Home page & Auth Modal) */
+[data-theme="dark"],
+.dark {
+  --color-bg: #121824 !important;
+  --color-surface: #192131 !important;
+  --color-surface-raised: #202A3E !important;
+  --color-border: #243045 !important;
+  --color-border-strong: #33435C !important;
+  --color-primary: #E2E8F0 !important;
+  --color-primary-dark: #0F1318 !important;
+  --color-primary-mid: #253246 !important;
+  --color-secondary: #94A3B8 !important;
+  --color-muted: #64748B !important;
+  --color-accent: #0284C7 !important;
+  --color-accent-hover: #0369A1 !important;
+  --color-accent-light: #16263D !important;
+  --color-accent-border: #1E3A5F !important;
+  --color-text-on-accent: #FFFFFF !important;
+  --color-success: #10B981 !important;
+  --color-error: #EF4444 !important;
+  --color-warning: #F59E0B !important;
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.2) !important;
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5) !important;
+  --shadow-focus: 0 0 0 3px rgba(2, 132, 199, 0.3) !important;
+}
+
+@theme {
+  --color-bg: var(--color-bg);
+  --color-surface: var(--color-surface);
+  --color-surface-raised: var(--color-surface-raised);
+  --color-border: var(--color-border);
+  --color-border-strong: var(--color-border-strong);
+  --color-primary: var(--color-primary);
+  --color-primary-dark: var(--color-primary-dark);
+  --color-primary-mid: var(--color-primary-mid);
+  --color-secondary: var(--color-secondary);
+  --color-muted: var(--color-muted);
+  --color-accent: var(--color-accent);
+  --color-accent-hover: var(--color-accent-hover);
+  --color-accent-light: var(--color-accent-light);
+  --color-accent-border: var(--color-accent-border);
+  --color-text-on-accent: var(--color-text-on-accent);
+  --color-success: var(--color-success);
+  --color-error: var(--color-error);
+  --color-warning: var(--color-warning);
+
+  --font-lexend: var(--font-lexend), ui-sans-serif, system-ui, sans-serif;
+  --font-source-sans: var(--font-source-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-jakarta: var(--font-plus-jakarta), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-inter: var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --color-navy: #0F2D5E;
+  --color-navy-dark: #0A1F3D;
+  --color-navy-surface: #14356B;
+  --color-navy-border: #1E3A5F;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    font-family: var(--font-inter);
+    background-color: var(--color-bg);
+    color: var(--color-secondary);
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-jakarta);
+    color: var(--color-primary);
+  }
+}
+
+/* Base Utility Classes */
+@layer utilities {
+  .font-display {
+    font-family: var(--font-jakarta);
+  }
+
+  .font-inter {
+    font-family: var(--font-inter);
+  }
+
+  .bg-navy {
+    background-color: #0F2D5E;
+  }
+
+  .bg-navy-dark {
+    background-color: #0A1F3D;
+  }
+
+  .bg-navy-surface {
+    background-color: #14356B;
+  }
+
+  .border-navy-border {
+    border-color: #1E3A5F;
+  }
+
+  .bg-bg {
+    background-color: var(--color-bg);
+  }
+
+  .bg-surface {
+    background-color: var(--color-surface);
+  }
+
+  .bg-surface-raised {
+    background-color: var(--color-surface-raised);
+  }
+
+  .border-border {
+    border-color: var(--color-border);
+  }
+
+  .border-border-strong {
+    border-color: var(--color-border-strong);
+  }
+
+  .text-primary {
+    color: var(--color-primary);
+  }
+
+  .text-secondary {
+    color: var(--color-secondary);
+  }
+
+  .text-accent {
+    color: var(--color-accent);
+  }
+
+  .text-muted {
+    color: var(--color-muted);
+  }
+}
