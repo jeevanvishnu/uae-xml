@@ -9,6 +9,11 @@ const messagesDir = path.resolve(__dirname, "../messages");
 const enPath = path.join(messagesDir, "en.json");
 const ruPath = path.join(messagesDir, "ru.json");
 
+if (!fs.existsSync(ruPath)) {
+  console.log("ℹ️ Russian locale is disabled/removed. English is the only active locale.");
+  process.exit(0);
+}
+
 const en = JSON.parse(fs.readFileSync(enPath, "utf-8"));
 const ru = JSON.parse(fs.readFileSync(ruPath, "utf-8"));
 

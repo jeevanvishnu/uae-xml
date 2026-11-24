@@ -549,8 +549,7 @@
   },
   "language": {
     "select": "Language",
-    "en": "English",
-    "ru": "Русский"
+    "en": "English"
   },
   "workspace": {
     "projectTitle": "Project",
