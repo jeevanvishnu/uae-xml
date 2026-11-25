@@ -1,34 +1,23 @@
 import "dotenv/config";
-
-
 import express, { Request, Response, NextFunction } from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
-
 import { sql } from "drizzle-orm";
 
 import { db } from "./db/db";
 import authRouter from "./router/auth.router";
-import projectRoutes from "./router/project.routes";
-import memberRoutes from "./router/member.routes";
-import documentRoutes from "./router/document.routes";
-import auditRoutes from "./router/audit.routes";
-import compilationRoutes from "./router/compilation.routes";
-import userRoutes from "./router/user.routes";
-import companyRoutes from "./router/company.routes";
-import statsRoutes from "./router/stats.routes";
-import dashboardRoutes from "./router/dashboard.routes";
-import uploadRoutes from "./router/upload.routes";
+import patientRoutes from "./router/patient.routes";
+import encounterRoutes from "./router/encounter.routes";
+import codesRoutes from "./router/codes.routes";
+import prescriptionRoutes from "./router/prescription.routes";
+import claimRoutes from "./router/claim.routes";
+import remittanceRoutes from "./router/remittance.routes";
+import facilityRoutes from "./router/facility.routes";
 
 const app = express();
 
-// ─── CORS Configuration & Validation ───────────────────────────────────────
 const isProduction = process.env.NODE_ENV === "production";
 const frontendUrl = process.env.FRONTEND_URL;
-
-if (isProduction && !frontendUrl) {
-  console.warn("⚠️ FRONTEND_URL environment variable is not defined in production mode!");
-}
 
 const allowedOrigins = [
   "http://localhost:3000",
@@ -41,25 +30,13 @@ if (frontendUrl) {
   allowedOrigins.push(frontendUrl);
 }
 
-const allowedPreviewOrigins = (process.env.ALLOWED_PREVIEW_ORIGINS || "")
-  .split(",")
-  .map((o) => o.trim())
-  .filter(Boolean);
-
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow requests with no origin (like mobile apps, curl, Postman, server-to-server)
       if (!origin) return callback(null, true);
-
-      if (
-        allowedOrigins.includes(origin) ||
-        allowedPreviewOrigins.includes(origin) ||
-        !isProduction
-      ) {
+      if (allowedOrigins.includes(origin) || !isProduction) {
         return callback(null, true);
       }
-
       return callback(new Error("CORS policy: Not allowed by CORS"), false);
     },
     credentials: true,
@@ -71,27 +48,22 @@ app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ limit: "10mb", extended: true }));
 app.use(cookieParser());
 
-// Rate limiting for auth is now handled directly in auth.router.ts using Upstash Redis.
-
-// ─── API Routes ──────────────────────────────────────────────────────────────
+// ─── Healthcare Platform Routes ──────────────────────────────────────────────
 app.use("/api/auth", authRouter);
-app.use("/api/admin", userRoutes);
-app.use("/api/admin", companyRoutes);
-app.use("/api/admin", statsRoutes);
-app.use("/api/dashboard", dashboardRoutes);
-
-// Direct Cloudflare R2 Upload Endpoints
-app.use("/api/upload", uploadRoutes);
-
-// eCTD Project & Dossier Management Routes
-app.use("/api/projects", projectRoutes);
-app.use("/api/projects", memberRoutes);
-app.use("/api/projects", documentRoutes);
-app.use("/api/projects", auditRoutes);
-app.use("/api/projects", compilationRoutes);
+app.use("/api/patients", patientRoutes);
+app.use("/api/encounters", encounterRoutes);
+app.use("/api/codes", codesRoutes);
+app.use("/api/prescriptions", prescriptionRoutes);
+app.use("/api/claims", claimRoutes);
+app.use("/api/remittance", remittanceRoutes);
+app.use("/api/facilities", facilityRoutes);
 
 app.get("/", (req: Request, res: Response) => {
-  res.json({ message: "eCTD Regulatory Dossier Management API is running." });
+  res.json({
+    name: "UAE Healthcare & Insurance e-Claims Integration Platform (Riayati/DHA)",
+    version: "1.0.0",
+    status: "online",
+  });
 });
 
 // Database Health Check Route
@@ -101,7 +73,7 @@ app.get("/health", async (req: Request, res: Response) => {
     res.json({
       status: "healthy",
       database: "connected",
-      neonTime: result.rows[0]?.current_time || null,
+      neonTime: (result as any).rows?.[0]?.current_time || null,
       timestamp: new Date().toISOString(),
     });
   } catch (error: any) {
@@ -128,4 +100,3 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
 });
 
 export default app;
-

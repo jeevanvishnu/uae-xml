@@ -1,240 +1,197 @@
 "use client";
 
-import Image from "next/image";
-import { Link } from "../../i18n/routing";
-import {
-  CheckCircle,
-  FileText,
-  ShieldCheck,
-  Lock,
-  Lightning,
-  ArrowRight,
-} from "@phosphor-icons/react";
-import { Navbar } from "../components/Navbar";
-import { Footer } from "../components/Footer";
-import { Section } from "../components/Section";
-import { PricingSection } from "../components/PricingSection";
-import { ProcessSection } from "../components/ProcessSection";
-import { ContactSection } from "../components/ContactSection";
-import { useEffect } from "react";
+import React, { useEffect } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useAuth } from "../context/AuthContext";
-import { useRouter } from "@/i18n/routing";
-import { useTranslations } from "next-intl";
+import {
+  Hospital,
+  IdentificationCard,
+  Stethoscope,
+  Pill,
+  Receipt,
+  Money,
+  Buildings,
+  ShieldCheck,
+  CheckCircle,
+  ArrowRight,
+  SignIn,
+} from "@phosphor-icons/react";
 
-export default function Home() {
-  const tHero = useTranslations("hero");
-  const tFeat = useTranslations("features");
-  const tAbout = useTranslations("about");
-
-  const { isAuthenticated, isLoading } = useAuth();
+export default function HomePage() {
+  const { isAuthenticated, isLoading, user } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
-      router.replace("/dashboard");
+      if (user?.role === "doctor") router.replace("/doctor");
+      else if (user?.role === "pharmacist") router.replace("/pharmacy");
+      else if (user?.role === "billing") router.replace("/billing");
+      else if (user?.role === "reception") router.replace("/reception");
+      else router.replace("/dashboard");
     }
-  }, [isLoading, isAuthenticated, router]);
+  }, [isLoading, isAuthenticated, user, router]);
 
-  if (isLoading || isAuthenticated) {
-    return (
-      <div className="min-h-screen bg-bg flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-accent border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
+  const personas = [
+    {
+      role: "Reception Desk",
+      desc: "Emirates ID reading, smart card check-in, real-time Riayati PriorRequest insurance eligibility checks.",
+      href: "/reception",
+      icon: IdentificationCard,
+      color: "text-sky-400",
+      border: "hover:border-sky-500/50",
+    },
+    {
+      role: "Doctor Consultation",
+      desc: "Clinical documentation, ICD-10 medical coding (1 Principal mandatory), CPT activities, and eRx prescribing.",
+      href: "/doctor",
+      icon: Stethoscope,
+      color: "text-purple-400",
+      border: "hover:border-purple-500/50",
+    },
+    {
+      role: "Pharmacy Hub",
+      desc: "Instant eRx lookup, DDC UAE Drug Formulary verification, copay calculations & medication dispensing.",
+      href: "/pharmacy",
+      icon: Pill,
+      color: "text-emerald-400",
+      border: "hover:border-emerald-500/50",
+    },
+    {
+      role: "Billing & Claims",
+      desc: "Pre-submission XSD validations, <Claim.Submission> XML serialization & direct transmission to Riayati Post Office.",
+      href: "/billing",
+      icon: Receipt,
+      color: "text-amber-400",
+      border: "hover:border-amber-500/50",
+    },
+    {
+      role: "Remittance Reconciliation",
+      desc: "Parse incoming <RemittanceAdvice> XML, investigate denial codes, and resubmit corrected claims.",
+      href: "/billing/remittance",
+      icon: Money,
+      color: "text-rose-400",
+      border: "hover:border-rose-500/50",
+    },
+    {
+      role: "Facility Administration",
+      desc: "Manage facility SenderID, MoHAP Riayati / DHA eClaimLink switches, and licensed healthcare clinicians.",
+      href: "/admin/facility",
+      icon: Buildings,
+      color: "text-indigo-400",
+      border: "hover:border-indigo-500/50",
+    },
+  ];
 
   return (
-    <div className="min-h-screen flex flex-col bg-white text-slate-800 antialiased selection:bg-blue-600 selection:text-white">
-      <Navbar />
-      <main className="flex-1 flex flex-col">
-
-        {/* Section 1: Hero (FULL-BLEED BACKGROUND SHOWCASE WITH LAPTOP & ECTD WORKFLOW) */}
-        <section
-          id="hero"
-          className="relative w-full text-white flex items-center min-h-[90vh] lg:h-[90vh] lg:min-h-[740px] xl:h-[92vh] xl:min-h-[780px] overflow-hidden bg-[#0F2D5E]"
-        >
-          {/* Background Graphic Asset — positioned absolute filling entire section */}
-          <Image
-            src="/images/hero-bg-hd.webp"
-            alt="MosCTD eCTD Dossier & XML Submission Platform"
-            fill
-            priority
-            sizes="100vw"
-            quality={100}
-            className="absolute inset-0 object-cover object-right"
-          />
-
-          {/* Minimal left-side scrim only for text legibility — no tint on the image itself */}
-          <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/20 to-transparent pointer-events-none" />
-          {/* Mobile: slight overall overlay so text stays readable */}
-          <div className="absolute inset-0 bg-black/20 lg:hidden pointer-events-none" />
-
-          {/* Content */}
-          <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 xl:max-w-[1360px] 2xl:max-w-[1460px] h-full flex items-center py-14 lg:py-0">
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center w-full">
-              {/* Left Column: Headline, Description & CTAs */}
-              <div className="lg:col-span-6 xl:col-span-5 flex flex-col items-start pt-2 lg:pt-0">
-                {/* Heading */}
-                <h1 className="font-display font-bold text-3xl sm:text-4xl md:text-5xl lg:text-[2.75rem] xl:text-[3.25rem] text-white tracking-tight leading-[1.14] max-w-[20ch]">
-                  {tHero("title")}
-                </h1>
-
-                {/* Description */}
-                <p className="font-inter text-blue-100/90 text-base sm:text-lg lg:text-[1.125rem] leading-relaxed max-w-[46ch] mt-4 sm:mt-6">
-                  {tHero("description")}
-                </p>
-
-                {/* Action Buttons */}
-                <div className="mt-7 sm:mt-9 flex flex-wrap items-center gap-3.5 sm:gap-4">
-                  <Link
-                    href="#contact"
-                    className="rounded-xl px-6 sm:px-7 py-3.5 sm:py-4 text-white bg-blue-600 hover:bg-blue-500 active:bg-blue-700 font-display font-semibold text-sm sm:text-base shadow-lg shadow-blue-950/30 hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 transition-all inline-flex items-center gap-2.5 group cursor-pointer"
-                  >
-                    <span>{tHero("startProject")}</span>
-                    <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" weight="bold" />
-                  </Link>
-
-                  <Link
-                    href="#pricing"
-                    className="rounded-xl px-5 sm:px-6 py-3.5 sm:py-4 text-white bg-white/10 hover:bg-white/20 border border-white/30 backdrop-blur-sm font-display font-medium text-sm sm:text-base transition-all inline-flex it-center justify-center cursor-pointer"
-                  >
-                    {tHero("viewTariffs")}
-                  </Link>
-                </div>
-              </div>
-
-              {/* Right spacer so the background image is fully visible */}
-              <div className="hidden lg:block lg:col-span-6 xl:col-span-7 pointer-events-none" />
+    <div className="min-h-screen bg-[var(--color-bg,#0D1117)] text-slate-200 flex flex-col font-sans selection:bg-sky-500 selection:text-white">
+      {/* Top Navbar */}
+      <header className="border-b border-[var(--color-border,#243045)] bg-[var(--color-surface,#161B22)] px-6 py-4 flex items-center justify-between sticky top-0 z-50">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400">
+            <Hospital size={24} weight="duotone" />
+          </div>
+          <div>
+            <span className="font-bold text-white text-base tracking-tight">
+              UAE Healthcare & Insurance e-Claims
+            </span>
+            <div className="flex items-center gap-2 mt-0.5">
+              <span className="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono">
+                MoHAP Riayati & DHA eClaimLink
+              </span>
+              <span className="text-[10px] text-slate-400 font-mono">
+                SenderID: FAC-MOH-98765
+              </span>
             </div>
           </div>
+        </div>
 
-          {/* Bottom divider line */}
-          <div className="absolute bottom-0 inset-x-0 h-px bg-white/10 pointer-events-none" />
-        </section>
+        <div className="flex items-center gap-3">
+          {isAuthenticated ? (
+            <Link
+              href="/dashboard"
+              className="flex items-center gap-2 px-4 py-2 bg-sky-500 hover:bg-sky-400 text-white rounded-lg text-xs font-bold transition-all shadow-md shadow-sky-500/20"
+            >
+              <span>Go to Operations Dashboard</span>
+              <ArrowRight size={14} />
+            </Link>
+          ) : (
+            <Link
+              href="/login"
+              className="flex items-center gap-2 px-4 py-2 bg-sky-500 hover:bg-sky-400 text-white rounded-lg text-xs font-bold transition-all shadow-md shadow-sky-500/20"
+            >
+              <SignIn size={16} />
+              <span>Sign In to Healthcare Portal</span>
+            </Link>
+          )}
+        </div>
+      </header>
 
-        {/* Section 2: Regulatory Compliance Strip (BLUE SECTION - REFERENCE DESIGN) */}
-        <Section
-          className="bg-[#0F2D5E] text-white py-6 md:py-8 border-y border-white/10"
-          containerClassName="xl:max-w-[1360px] 2xl:max-w-[1460px]"
-          id="features"
-        >
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 items-center gap-4 sm:gap-y-6 lg:gap-0">
-            {[
-              {
-                icon: <FileText size={24} className="text-white" weight="regular" />,
-                title: tFeat("f1Title"),
-              },
-              {
-                icon: <ShieldCheck size={24} className="text-white" weight="regular" />,
-                title: tFeat("f2Title"),
-              },
-              {
-                icon: <Lock size={24} className="text-white" weight="regular" />,
-                title: tFeat("f3Title"),
-              },
-              {
-                icon: <Lightning size={24} className="text-white" weight="regular" />,
-                title: tFeat("f4Title"),
-              },
-            ].map((feature, i) => (
-              <div
-                key={i}
-                className="relative flex items-center gap-3.5 sm:gap-4 py-2 sm:py-3 px-3 sm:px-5 lg:px-6 justify-start lg:justify-center"
+      {/* Hero Section */}
+      <main className="flex-1 max-w-6xl mx-auto w-full px-6 py-12 space-y-12">
+        <div className="text-center max-w-3xl mx-auto space-y-4">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-sky-500/10 border border-sky-500/20 text-sky-400 text-xs font-semibold">
+            <ShieldCheck size={16} weight="fill" />
+            Federal Standard XML Integration & Post Office Hub Connector
+          </div>
+
+          <h1 className="text-3xl sm:text-5xl font-extrabold text-white tracking-tight leading-tight">
+            UAE Healthcare Insurance & e-Claims Management
+          </h1>
+
+          <p className="text-sm sm:text-base text-slate-400 leading-relaxed">
+            Full-lifecycle insurance claims integration platform engineered strictly to UAE MoHAP Riayati and DHA eClaimLink regulations. Pure DB JWT authentication with zero external caching.
+          </p>
+
+          <div className="pt-2 flex items-center justify-center gap-3">
+            <Link
+              href="/login"
+              className="px-6 py-3 bg-sky-500 hover:bg-sky-400 text-white font-bold text-sm rounded-xl shadow-lg shadow-sky-500/20 transition-all flex items-center gap-2"
+            >
+              <span>Explore Role Dashboards</span>
+              <ArrowRight size={16} weight="bold" />
+            </Link>
+          </div>
+        </div>
+
+        {/* 6 Core Functional Persona Tiles */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {personas.map((p) => {
+            const Icon = p.icon;
+            return (
+              <Link
+                key={p.href}
+                href={p.href}
+                className={`bg-[var(--color-surface,#161B22)] border border-[var(--color-border,#243045)] ${p.border} rounded-2xl p-6 flex flex-col justify-between transition-all group shadow-xl`}
               >
-                <div className="w-12 h-12 rounded-full border border-white/40 flex items-center justify-center shrink-0 text-white">
-                  {feature.icon}
-                </div>
-                <span className="font-display font-medium text-white text-sm sm:text-[0.95rem] xl:text-base leading-snug">
-                  {feature.title}
-                </span>
-
-                {/* Vertical Divider matching reference image */}
-                {i < 3 && (
-                  <div
-                    className={`hidden lg:block absolute right-0 top-1/2 -translate-y-1/2 h-10 w-px bg-white/20 ${
-                      i === 1 ? "" : "sm:block"
-                    }`}
-                  />
-                )}
-              </div>
-            ))}
-          </div>
-        </Section>
-
-        {/* Section 3: Enterprise Platform Architecture (WHITE SECTION) */}
-        <Section
-          className="bg-white py-16 md:py-24"
-          containerClassName="xl:max-w-[1360px] 2xl:max-w-[1460px]"
-          id="about"
-        >
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 xl:gap-16 items-center">
-
-            <div className="lg:col-span-6 relative w-full aspect-[1024/518] flex items-center justify-center">
-              {/* Subtle ambient backlight glow */}
-              <div className="absolute inset-0 max-w-[90%] max-h-[85%] m-auto bg-gradient-to-tr from-sky-400/20 via-blue-500/10 to-transparent blur-2xl rounded-full pointer-events-none -z-10" />
-
-              <Image
-                src="/images/about-dossier-preview.png"
-                alt={tAbout("imgAlt")}
-                fill
-                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 700px"
-                className="object-contain drop-shadow-[0_20px_35px_rgba(15,45,94,0.14)]"
-                priority
-              />
-            </div>
-
-            <div className="lg:col-span-6 flex flex-col justify-center gap-5">
-              <div>
-                <h2 className="font-display font-bold text-2xl sm:text-3xl lg:text-[2.25rem] text-slate-900 tracking-tight leading-tight">
-                  {tAbout("title")}
-                </h2>
-              </div>
-
-              <p className="font-inter text-slate-600 text-sm sm:text-base leading-relaxed">
-                {tAbout("p1")}
-              </p>
-
-              <p className="font-inter text-slate-600 text-sm sm:text-base leading-relaxed">
-                {tAbout("p2")}
-              </p>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-1">
-                {[
-                  tAbout("check1"),
-                  tAbout("check2"),
-                  tAbout("check3"),
-                  tAbout("check4")
-                ].map((feature, i) => (
-                  <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 border border-slate-200">
-                    <div className="w-7 h-7 rounded-lg bg-blue-50 border border-blue-200 flex items-center justify-center shrink-0">
-                      <CheckCircle size={16} className="text-[#0F2D5E]" weight="fill" />
-                    </div>
-                    <span className="font-display text-slate-800 text-xs sm:text-sm font-semibold leading-snug">{feature}</span>
+                <div className="space-y-3">
+                  <div className={`w-12 h-12 rounded-xl bg-[var(--color-surface-raised,#192131)] flex items-center justify-center ${p.color} border border-slate-700/50`}>
+                    <Icon size={26} weight="duotone" />
                   </div>
-                ))}
-              </div>
-            </div>
+                  <div>
+                    <h3 className="font-bold text-white text-base group-hover:text-sky-400 transition-colors">
+                      {p.role}
+                    </h3>
+                    <p className="text-xs text-[var(--color-muted,#64748B)] mt-1.5 leading-relaxed">
+                      {p.desc}
+                    </p>
+                  </div>
+                </div>
 
-          </div>
-        </Section>
-
-        {/* Section 4: Tariffs & Pricing (LIGHT SECTION matching reference design) */}
-        <Section className="bg-[#F8FAFC] py-16 md:py-24 border-y border-slate-200/80" id="pricing">
-          <PricingSection />
-        </Section>
-
-        {/* Section 5: Process (WHITE SECTION) */}
-        <Section className="bg-white py-16 md:py-24 border-t border-slate-200/80" id="process">
-          <ProcessSection />
-        </Section>
-
-        {/* Section 6: Consultation & Contact (BLUE SECTION) */}
-        <Section className="bg-[#0F2D5E] py-16 md:py-24 text-white" id="contact">
-          <ContactSection />
-        </Section>
-
+                <div className="pt-4 mt-4 border-t border-[var(--color-border,#243045)] flex items-center justify-between text-xs font-semibold text-slate-300 group-hover:text-sky-400">
+                  <span>Enter Workspace</span>
+                  <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+                </div>
+              </Link>
+            );
+          })}
+        </div>
       </main>
-      <Footer />
+
+      {/* Footer */}
+      <footer className="border-t border-[var(--color-border,#243045)] bg-[var(--color-surface,#161B22)] px-6 py-4 text-center text-xs text-slate-400">
+        Al Noor Medical Center &bull; Riayati Post Office Switch (TEST) &bull; Compliant with MoHAP & DHA eClaimLink Standards
+      </footer>
     </div>
   );
 }

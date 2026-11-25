@@ -1,314 +1,649 @@
-import { pgEnum, pgTable, uuid, text, timestamp, varchar, integer, bigint, boolean, index, uniqueIndex, jsonb } from "drizzle-orm/pg-core";
+import {
+  pgEnum,
+  pgTable,
+  uuid,
+  text,
+  timestamp,
+  varchar,
+  integer,
+  boolean,
+  index,
+  uniqueIndex,
+  jsonb,
+} from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
 // ─── ENUMS ───────────────────────────────────────────────────────────────────
-export const roleEnum = pgEnum("role", ["user", "admin", "superadmin"]);
-export const projectMemberRoleEnum = pgEnum("project_member_role", ["owner", "editor", "viewer"]);
-export const documentStatusEnum = pgEnum("document_status", ["active", "superseded", "deleted"]);
+export const roleEnum = pgEnum("role", [
+  "reception",
+  "doctor",
+  "pharmacist",
+  "billing",
+  "admin",
+  "superadmin",
+]);
+
+export const emirateEnum = pgEnum("emirate", ["DXB", "NE"]);
+
+export const facilityTypeEnum = pgEnum("facility_type", [
+  "CLINIC",
+  "PHARMACY",
+  "HOSPITAL",
+]);
+
+export const dispositionEnum = pgEnum("disposition_flag", ["TEST", "PRODUCTION"]);
+
+export const genderEnum = pgEnum("gender", ["M", "F", "OTHER"]);
+
+export const encounterTypeEnum = pgEnum("encounter_type", [
+  "OUTPATIENT",
+  "INPATIENT",
+  "EMERGENCY",
+  "DENTAL",
+]);
+
+export const eligibilityStatusEnum = pgEnum("eligibility_status", [
+  "ACTIVE",
+  "INACTIVE",
+  "EXPIRED",
+  "PENDING",
+  "REJECTED",
+]);
+
+export const claimStatusEnum = pgEnum("claim_status", [
+  "DRAFT",
+  "READY",
+  "SUBMITTED",
+  "ACCEPTED",
+  "REJECTED",
+  "PAID",
+  "PARTIALLY_PAID",
+  "RESUBMITTED",
+]);
+
+export const hubDirectionEnum = pgEnum("hub_direction", ["OUTBOUND", "INBOUND"]);
+
+export const hubRefTypeEnum = pgEnum("hub_ref_type", [
+  "CLAIM",
+  "ERX",
+  "ELIGIBILITY",
+  "REMITTANCE",
+]);
+
+export const paymentMethodEnum = pgEnum("payment_method", [
+  "CASH",
+  "CARD",
+  "INSURANCE",
+  "MIXED",
+]);
+
 export const logTypeEnum = pgEnum("log_type", ["SUCCESS", "WARNING", "ERROR"]);
 
 // ─── TABLES ──────────────────────────────────────────────────────────────────
-export const users = pgTable("users", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  name: text("name"),
-  email: varchar("email", { length: 255 }).notNull().unique(),
-  password: text("password").notNull(),
-  role: roleEnum("role").default("user").notNull(),
-  imageUrl: text("image_url"),
-  storageKey: text("storage_key"),
-  isBlocked: boolean("is_blocked").default(false).notNull(),
-  resetPasswordToken: text("reset_password_token"),
-  resetPasswordExpires: timestamp("reset_password_expires"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-}, (table) => [
-  index("idx_users_email").on(table.email),
-  index("idx_users_reset_password_token").on(table.resetPasswordToken),
-]);
 
-export const companies = pgTable("companies", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  name: text("name").notNull(),
-  email: varchar("email", { length: 255 }).notNull(),
-  mobile: varchar("mobile", { length: 50 }),
-  address: text("address"),
-  imageUrl: text("image_url"),
-  subscriptionStartDate: timestamp("subscription_start_date").defaultNow().notNull(),
-  subscriptionEndDate: timestamp("subscription_end_date"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-}, (table) => [
-  index("idx_companies_email").on(table.email),
-  index("idx_companies_subscription_end_date").on(table.subscriptionEndDate),
-]);
+// 1. Facilities (Multi-tenant scope)
+export const facilities = pgTable(
+  "facilities",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    name: text("name").notNull(),
+    emirate: emirateEnum("emirate").default("NE").notNull(), // Default Northern Emirates (Riayati)
+    licenseId: varchar("license_id", { length: 100 }).notNull().unique(), // SenderID for Riayati
+    facilityType: facilityTypeEnum("facility_type").default("CLINIC").notNull(),
+    phone: varchar("phone", { length: 50 }),
+    email: varchar("email", { length: 255 }),
+    address: text("address"),
+    hubUsername: text("hub_username"),
+    hubPasswordEnc: text("hub_password_enc"),
+    x509CertEnc: text("x509_cert_enc"),
+    dispositionFlag: dispositionEnum("disposition_flag").default("TEST").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("idx_facilities_license_id").on(table.licenseId),
+    index("idx_facilities_emirate").on(table.emirate),
+  ]
+);
 
-export const companyMembers = pgTable("company_members", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  companyId: uuid("company_id")
-    .references(() => companies.id, { onDelete: "cascade" })
-    .notNull(),
-  userId: uuid("user_id")
-    .references(() => users.id, { onDelete: "cascade" })
-    .notNull(),
-  role: text("role").default("admin").notNull(), // or enum
-  maxUsers: integer("max_users").default(10).notNull(),
-  storageGb: integer("storage_gb").default(5).notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-}, (table) => [
-  index("idx_company_members_company_id").on(table.companyId),
-  index("idx_company_members_user_id").on(table.userId),
-  index("idx_company_members_company_id_role").on(table.companyId, table.role),
-]);
+// 2. Users
+export const users = pgTable(
+  "users",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    facilityId: uuid("facility_id").references(() => facilities.id, { onDelete: "cascade" }),
+    name: text("name"),
+    email: varchar("email", { length: 255 }).notNull().unique(),
+    password: text("password").notNull(),
+    role: roleEnum("role").default("reception").notNull(),
+    imageUrl: text("image_url"),
+    storageKey: text("storage_key"),
+    isBlocked: boolean("is_blocked").default(false).notNull(),
+    resetPasswordToken: text("reset_password_token"),
+    resetPasswordExpires: timestamp("reset_password_expires"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("idx_users_email").on(table.email),
+    index("idx_users_facility_id").on(table.facilityId),
+    index("idx_users_reset_password_token").on(table.resetPasswordToken),
+  ]
+);
 
-export const refreshSessions = pgTable("refresh_sessions", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  userId: uuid("user_id")
-    .references(() => users.id, { onDelete: "cascade" })
-    .notNull(),
-  tokenHash: text("token_hash").notNull(),
-  familyId: varchar("family_id", { length: 36 }).notNull(),
-  familyCreatedAt: timestamp("family_created_at").defaultNow().notNull(),
-  expiresAt: timestamp("expires_at").notNull(),
-  revokedAt: timestamp("revoked_at"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-}, (table) => [
-  index("idx_refresh_sessions_user_id").on(table.userId),
-  index("idx_refresh_sessions_token_hash").on(table.tokenHash),
-  index("idx_refresh_sessions_family_id").on(table.familyId),
-  index("idx_refresh_sessions_expires_at").on(table.expiresAt),
-  index("idx_refresh_sessions_user_id_revoked_at").on(table.userId, table.revokedAt),
-]);
+// 3. Refresh Sessions (No Redis needed, token rotation with DB revoke)
+export const refreshSessions = pgTable(
+  "refresh_sessions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .references(() => users.id, { onDelete: "cascade" })
+      .notNull(),
+    tokenHash: text("token_hash").notNull(),
+    familyId: varchar("family_id", { length: 36 }).notNull(),
+    familyCreatedAt: timestamp("family_created_at").defaultNow().notNull(),
+    expiresAt: timestamp("expires_at").notNull(),
+    revokedAt: timestamp("revoked_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("idx_refresh_sessions_user_id").on(table.userId),
+    index("idx_refresh_sessions_token_hash").on(table.tokenHash),
+    index("idx_refresh_sessions_family_id").on(table.familyId),
+    index("idx_refresh_sessions_expires_at").on(table.expiresAt),
+  ]
+);
 
-export const projects = pgTable("projects", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  companyId: uuid("company_id").references(() => companies.id, { onDelete: "cascade" }),
-  projectCode: varchar("project_code", { length: 100 }).notNull().unique(),
-  productName: text("product_name").notNull(),
-  dosageForm: text("dosage_form"),
-  productType: text("product_type"),
-  manufacturer: text("manufacturer"),
-  mahHolder: text("mah_holder"),
-  responsibleUser: text("responsible_user"),
-  tariff: text("tariff"),
-  additionalFeature: text("additional_feature"),
-  status: text("status").default("Active").notNull(),
-  isProjectSaved: boolean("is_project_saved").default(false).notNull(),
-  version: integer("version").default(1).notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-}, (table) => [
-  index("idx_projects_company_id").on(table.companyId),
-  index("idx_projects_company_id_created_at").on(table.companyId, table.createdAt),
-]);
+// 4. Clinicians (Doctors, Specialists)
+export const clinicians = pgTable(
+  "clinicians",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    facilityId: uuid("facility_id")
+      .references(() => facilities.id, { onDelete: "cascade" })
+      .notNull(),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+    fullName: text("full_name").notNull(),
+    licenseNumber: varchar("license_number", { length: 100 }).notNull(), // ClinicianID in XML
+    specialty: text("specialty"),
+    department: text("department"),
+    isActive: boolean("is_active").default(true).notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("idx_clinicians_facility_id").on(table.facilityId),
+    index("idx_clinicians_license_number").on(table.licenseNumber),
+  ]
+);
 
-export const dossierConfig = pgTable("dossier_config", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  projectId: uuid("project_id")
-    .references(() => projects.id, { onDelete: "cascade" })
-    .notNull(),
-  submissionCountry: text("submission_country"),
-  role: text("role"),
-  procedureType: text("procedure_type"),
-  typeOfProcedure: text("type_of_procedure"),
-  applicationNumber: text("application_number"),
-  dossierSequence: text("dossier_sequence").default("Sequence 0000").notNull(),
-  isDossierSaved: boolean("is_dossier_saved").default(false).notNull(),
-  dossierDetails: jsonb("dossier_details"),
-}, (table) => [
-  index("idx_dossier_config_project_id").on(table.projectId),
-]);
+// 5. Patients (Separating Identity from Policy status per PRD FR-1.2)
+export const patients = pgTable(
+  "patients",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    facilityId: uuid("facility_id")
+      .references(() => facilities.id, { onDelete: "cascade" })
+      .notNull(),
+    emiratesId: varchar("emirates_id", { length: 25 }), // 784-YYYY-NNNNNNN-C
+    passportNo: varchar("passport_no", { length: 50 }),
+    fullName: text("full_name").notNull(),
+    dob: timestamp("dob").notNull(),
+    gender: genderEnum("gender").notNull(),
+    phone: varchar("phone", { length: 50 }),
+    email: varchar("email", { length: 255 }),
+    nationality: varchar("nationality", { length: 100 }),
+    address: text("address"),
+    emergencyContact: text("emergency_contact"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("idx_patients_facility_id").on(table.facilityId),
+    index("idx_patients_emirates_id").on(table.emiratesId),
+    index("idx_patients_passport_no").on(table.passportNo),
+    index("idx_patients_phone").on(table.phone),
+  ]
+);
 
-export const projectMembers = pgTable("project_members", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  projectId: uuid("project_id")
-    .references(() => projects.id, { onDelete: "cascade" })
-    .notNull(),
-  userId: uuid("user_id")
-    .references(() => users.id, { onDelete: "cascade" })
-    .notNull(),
-  role: projectMemberRoleEnum("role").default("editor").notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-}, (table) => [
-  index("idx_project_members_project_id").on(table.projectId),
-  index("idx_project_members_user_id").on(table.userId),
-  uniqueIndex("uniq_project_members_project_user").on(table.projectId, table.userId),
-]);
+// 6. Patient Policies (Insurance Coverage & Eligibility per PRD FR-1.3)
+export const patientPolicies = pgTable(
+  "patient_policies",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    patientId: uuid("patient_id")
+      .references(() => patients.id, { onDelete: "cascade" })
+      .notNull(),
+    facilityId: uuid("facility_id")
+      .references(() => facilities.id, { onDelete: "cascade" })
+      .notNull(),
+    payerId: varchar("payer_id", { length: 100 }).notNull(), // ReceiverID in Riayati/DHA
+    payerName: text("payer_name").notNull(),
+    memberId: varchar("member_id", { length: 100 }).notNull(),
+    policyNumber: varchar("policy_number", { length: 100 }),
+    network: varchar("network", { length: 100 }).default("Comprehensive"),
+    copayPercent: integer("copay_percent").default(20).notNull(), // e.g., 20%
+    copayCap: integer("copay_cap").default(50).notNull(), // Max copay cap in AED (e.g. 50 AED)
+    deductible: integer("deductible").default(0).notNull(),
+    expiryDate: timestamp("expiry_date").notNull(),
+    eligibilityStatus: eligibilityStatusEnum("eligibility_status").default("PENDING").notNull(),
+    lastVerifiedAt: timestamp("last_verified_at"),
+    eligibilityDetails: jsonb("eligibility_details"), // Cached benefits payload
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("idx_patient_policies_patient_id").on(table.patientId),
+    index("idx_patient_policies_payer_id").on(table.payerId),
+    index("idx_patient_policies_member_id").on(table.memberId),
+  ]
+);
 
-export const projectDocuments = pgTable("project_documents", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  projectId: uuid("project_id")
-    .references(() => projects.id, { onDelete: "cascade" })
-    .notNull(),
-  // Links document to the specific dossier sequence it was uploaded under.
-  // Nullable for backwards-compatibility with documents created before this column was added.
-  dossierConfigId: uuid("dossier_config_id")
-    .references(() => dossierConfig.id, { onDelete: "set null" }),
-  nodeId: varchar("node_id", { length: 100 }).notNull(),
-  docCode: varchar("doc_code", { length: 5 }),
-  docType: varchar("doc_type", { length: 100 }),
-  originalName: text("original_name").notNull(),
-  storageUrl: text("storage_url"),
-  storageKey: text("storage_key"),
-  fileSize: bigint("file_size", { mode: "number" }).default(0).notNull(),
-  sequence: text("sequence").default("0000").notNull(),
-  md5Checksum: text("md5_checksum"),
-  status: documentStatusEnum("status").default("active").notNull(),
-  operation: text("operation").default("new").notNull(),
-  issueDate: timestamp("issue_date"),
-  expirationDate: timestamp("expiration_date"),
-  uploadedAt: timestamp("uploaded_at").defaultNow().notNull(),
-}, (table) => [
-  index("idx_project_documents_project_id").on(table.projectId),
-  index("idx_project_documents_node_id").on(table.nodeId),
-  index("idx_project_documents_project_id_node_id_status").on(table.projectId, table.nodeId, table.status),
-  index("idx_project_documents_project_id_status").on(table.projectId, table.status),
-  index("idx_project_documents_dossier_config_id").on(table.dossierConfigId),
-]);
+// 7. Encounters (Visits / Consultations)
+export const encounters = pgTable(
+  "encounters",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    facilityId: uuid("facility_id")
+      .references(() => facilities.id, { onDelete: "cascade" })
+      .notNull(),
+    patientId: uuid("patient_id")
+      .references(() => patients.id, { onDelete: "cascade" })
+      .notNull(),
+    policyId: uuid("policy_id").references(() => patientPolicies.id, { onDelete: "set null" }), // Nullable if Self-Pay
+    clinicianId: uuid("clinician_id").references(() => clinicians.id, { onDelete: "set null" }),
+    encounterType: encounterTypeEnum("encounter_type").default("OUTPATIENT").notNull(),
+    startTime: timestamp("start_time").defaultNow().notNull(),
+    endTime: timestamp("end_time"),
+    diagnoses: jsonb("diagnoses").default([]).notNull(), // Array of { type: 'Principal'|'Secondary', code, description }
+    activities: jsonb("activities").default([]).notNull(), // Array of { id, type, code, quantity, unitPrice, gross, patientShare, net }
+    grossAmount: integer("gross_amount").default(0).notNull(), // in AED (or fils)
+    patientShare: integer("patient_share").default(0).notNull(),
+    netAmount: integer("net_amount").default(0).notNull(),
+    paymentStatus: varchar("payment_status", { length: 50 }).default("UNPAID").notNull(),
+    claimStatus: claimStatusEnum("claim_status").default("DRAFT").notNull(),
+    clinicalNotes: text("clinical_notes"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("idx_encounters_facility_id").on(table.facilityId),
+    index("idx_encounters_patient_id").on(table.patientId),
+    index("idx_encounters_claim_status").on(table.claimStatus),
+    index("idx_encounters_start_time").on(table.startTime),
+  ]
+);
 
-export const auditLogs = pgTable("audit_logs", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  projectId: uuid("project_id")
-    .references(() => projects.id, { onDelete: "cascade" })
-    .notNull(),
-  logType: logTypeEnum("log_type").notNull(),
-  message: text("message").notNull(),
-  userCredentials: text("user_credentials"),
-  formationDate: timestamp("formation_date").defaultNow().notNull(),
-}, (table) => [
-  index("idx_audit_logs_project_id").on(table.projectId),
-  index("idx_audit_logs_project_id_formation_date").on(table.projectId, table.formationDate),
-]);
+// 8. Payment Transactions (Patient co-pay/deductible collection)
+export const paymentTransactions = pgTable(
+  "payment_transactions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    encounterId: uuid("encounter_id")
+      .references(() => encounters.id, { onDelete: "cascade" })
+      .notNull(),
+    facilityId: uuid("facility_id")
+      .references(() => facilities.id, { onDelete: "cascade" })
+      .notNull(),
+    patientId: uuid("patient_id")
+      .references(() => patients.id, { onDelete: "cascade" })
+      .notNull(),
+    collectedBy: uuid("collected_by").references(() => users.id, { onDelete: "set null" }),
+    paymentMethod: paymentMethodEnum("payment_method").default("CASH").notNull(),
+    amount: integer("amount").notNull(), // Collected amount in AED
+    receiptNumber: varchar("receipt_number", { length: 100 }).notNull(),
+    notes: text("notes"),
+    collectedAt: timestamp("collected_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("idx_payment_transactions_encounter_id").on(table.encounterId),
+    index("idx_payment_transactions_facility_id").on(table.facilityId),
+  ]
+);
 
-export const packageArchives = pgTable("package_archives", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  projectId: uuid("project_id")
-    .references(() => projects.id, { onDelete: "cascade" })
-    .notNull(),
-  fullName: text("full_name").notNull(),
-  size: bigint("size", { mode: "number" }).notNull(),
-  xmlChecksum: text("xml_checksum").notNull(),
-  zipChecksum: text("zip_checksum").notNull(),
-  downloadUrl: text("download_url").notNull(),
-  storageKey: text("storage_key"),
-  generatedAt: timestamp("generated_at").defaultNow().notNull(),
-}, (table) => [
-  index("idx_package_archives_project_id").on(table.projectId),
-]);
+// 9. Prescriptions (eRx)
+export const prescriptions = pgTable(
+  "prescriptions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    encounterId: uuid("encounter_id")
+      .references(() => encounters.id, { onDelete: "cascade" })
+      .notNull(),
+    facilityId: uuid("facility_id")
+      .references(() => facilities.id, { onDelete: "cascade" })
+      .notNull(),
+    patientId: uuid("patient_id")
+      .references(() => patients.id, { onDelete: "cascade" })
+      .notNull(),
+    clinicianId: uuid("clinician_id").references(() => clinicians.id, { onDelete: "set null" }),
+    erxRefNo: varchar("erx_ref_no", { length: 100 }),
+    medications: jsonb("medications").default([]).notNull(), // [{drugCode, tradeName, dosage, frequency, duration, quantity}]
+    dispenseStatus: varchar("dispense_status", { length: 50 }).default("PENDING").notNull(),
+    erxXmlKey: text("erx_xml_key"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("idx_prescriptions_facility_id").on(table.facilityId),
+    index("idx_prescriptions_erx_ref_no").on(table.erxRefNo),
+    index("idx_prescriptions_encounter_id").on(table.encounterId),
+  ]
+);
+
+// 10. Claim Submissions
+export const claimSubmissions = pgTable(
+  "claim_submissions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    encounterId: uuid("encounter_id")
+      .references(() => encounters.id, { onDelete: "cascade" })
+      .notNull(),
+    facilityId: uuid("facility_id")
+      .references(() => facilities.id, { onDelete: "cascade" })
+      .notNull(),
+    claimNumber: varchar("claim_number", { length: 100 }).notNull().unique(),
+    submissionXmlKey: text("submission_xml_key"),
+    submissionDate: timestamp("submission_date").defaultNow().notNull(),
+    payerId: varchar("payer_id", { length: 100 }).notNull(),
+    netAmount: integer("net_amount").notNull(),
+    resubmissionCount: integer("resubmission_count").default(0).notNull(),
+    resubmissionType: varchar("resubmission_type", { length: 50 }),
+    parentClaimId: uuid("parent_claim_id"),
+    status: claimStatusEnum("status").default("SUBMITTED").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("idx_claim_submissions_facility_id").on(table.facilityId),
+    index("idx_claim_submissions_encounter_id").on(table.encounterId),
+    index("idx_claim_submissions_claim_number").on(table.claimNumber),
+  ]
+);
+
+// 11. Remittance Lines (Payer Reconciliation)
+export const remittanceLines = pgTable(
+  "remittance_lines",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    claimSubmissionId: uuid("claim_submission_id")
+      .references(() => claimSubmissions.id, { onDelete: "cascade" })
+      .notNull(),
+    activityId: varchar("activity_id", { length: 100 }),
+    gross: integer("gross").default(0).notNull(),
+    patientShare: integer("patient_share").default(0).notNull(),
+    net: integer("net").default(0).notNull(),
+    paymentAmount: integer("payment_amount").default(0).notNull(),
+    denialCode: varchar("denial_code", { length: 50 }),
+    payerRemark: text("payer_remark"),
+    status: varchar("status", { length: 50 }).default("PENDING").notNull(),
+  },
+  (table) => [
+    index("idx_remittance_lines_submission_id").on(table.claimSubmissionId),
+  ]
+);
+
+// 12. Hub Transactions (Regulatory Audit Trail per PRD NFR-3)
+export const hubTransactions = pgTable(
+  "hub_transactions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    facilityId: uuid("facility_id")
+      .references(() => facilities.id, { onDelete: "cascade" })
+      .notNull(),
+    referenceType: hubRefTypeEnum("reference_type").notNull(),
+    referenceId: uuid("reference_id"), // links to encounter, prescription, claim, or policy
+    direction: hubDirectionEnum("direction").notNull(),
+    hubTxnId: varchar("hub_txn_id", { length: 150 }),
+    rawXml: text("raw_xml"),
+    rawXmlKey: text("raw_xml_key"),
+    validationErrors: jsonb("validation_errors"),
+    status: varchar("status", { length: 50 }).default("PENDING").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("idx_hub_transactions_facility_id").on(table.facilityId),
+    index("idx_hub_transactions_ref_id").on(table.referenceId),
+    index("idx_hub_transactions_hub_txn_id").on(table.hubTxnId),
+  ]
+);
+
+// 13. Audit Logs
+export const auditLogs = pgTable(
+  "audit_logs",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    facilityId: uuid("facility_id").references(() => facilities.id, { onDelete: "set null" }),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+    action: text("action").notNull(),
+    entityType: varchar("entity_type", { length: 100 }).notNull(),
+    entityId: text("entity_id"),
+    metadata: jsonb("metadata"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("idx_audit_logs_facility_id").on(table.facilityId),
+    index("idx_audit_logs_user_id").on(table.userId),
+  ]
+);
+
+// 14. Code Dictionaries: ICD-10 Diagnosis Codes
+export const icd10Codes = pgTable(
+  "icd10_codes",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    code: varchar("code", { length: 20 }).notNull().unique(),
+    description: text("description").notNull(),
+    category: varchar("category", { length: 100 }),
+  },
+  (table) => [
+    index("idx_icd10_code").on(table.code),
+  ]
+);
+
+// 15. Code Dictionaries: CPT Procedure / Service Codes
+export const cptCodes = pgTable(
+  "cpt_codes",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    code: varchar("code", { length: 20 }).notNull().unique(),
+    description: text("description").notNull(),
+    category: varchar("category", { length: 100 }),
+    defaultPrice: integer("default_price").default(0), // in AED
+  },
+  (table) => [
+    index("idx_cpt_code").on(table.code),
+  ]
+);
+
+// 16. Code Dictionaries: UAE Drug Codes (DDC)
+export const drugCodes = pgTable(
+  "drug_codes",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    drugCode: varchar("drug_code", { length: 50 }).notNull().unique(),
+    tradeName: text("trade_name").notNull(),
+    genericName: text("generic_name").notNull(),
+    dosageForm: varchar("dosage_form", { length: 100 }),
+    strength: varchar("strength", { length: 100 }),
+    unit: varchar("unit", { length: 50 }),
+    isGeneric: boolean("is_generic").default(false).notNull(),
+    moHapCode: varchar("mohap_code", { length: 50 }),
+  },
+  (table) => [
+    index("idx_drug_code").on(table.drugCode),
+    index("idx_drug_trade_name").on(table.tradeName),
+  ]
+);
 
 // ─── RELATIONS ───────────────────────────────────────────────────────────────
-export const usersRelations = relations(users, ({ many }) => ({
+
+export const facilitiesRelations = relations(facilities, ({ many }) => ({
+  users: many(users),
+  clinicians: many(clinicians),
+  patients: many(patients),
+  encounters: many(encounters),
+  hubTransactions: many(hubTransactions),
+}));
+
+export const usersRelations = relations(users, ({ one, many }) => ({
+  facility: one(facilities, {
+    fields: [users.facilityId],
+    references: [facilities.id],
+  }),
   refreshSessions: many(refreshSessions),
-  projectMembers: many(projectMembers),
-  companyMembers: many(companyMembers),
 }));
 
-export const companiesRelations = relations(companies, ({ many }) => ({
-  members: many(companyMembers),
-  projects: many(projects),
-}));
-
-export const companyMembersRelations = relations(companyMembers, ({ one }) => ({
-  company: one(companies, {
-    fields: [companyMembers.companyId],
-    references: [companies.id],
+export const cliniciansRelations = relations(clinicians, ({ one, many }) => ({
+  facility: one(facilities, {
+    fields: [clinicians.facilityId],
+    references: [facilities.id],
   }),
   user: one(users, {
-    fields: [companyMembers.userId],
+    fields: [clinicians.userId],
+    references: [users.id],
+  }),
+  encounters: many(encounters),
+}));
+
+export const patientsRelations = relations(patients, ({ one, many }) => ({
+  facility: one(facilities, {
+    fields: [patients.facilityId],
+    references: [facilities.id],
+  }),
+  policies: many(patientPolicies),
+  encounters: many(encounters),
+}));
+
+export const patientPoliciesRelations = relations(patientPolicies, ({ one }) => ({
+  patient: one(patients, {
+    fields: [patientPolicies.patientId],
+    references: [patients.id],
+  }),
+  facility: one(facilities, {
+    fields: [patientPolicies.facilityId],
+    references: [facilities.id],
+  }),
+}));
+
+export const encountersRelations = relations(encounters, ({ one, many }) => ({
+  facility: one(facilities, {
+    fields: [encounters.facilityId],
+    references: [facilities.id],
+  }),
+  patient: one(patients, {
+    fields: [encounters.patientId],
+    references: [patients.id],
+  }),
+  policy: one(patientPolicies, {
+    fields: [encounters.policyId],
+    references: [patientPolicies.id],
+  }),
+  clinician: one(clinicians, {
+    fields: [encounters.clinicianId],
+    references: [clinicians.id],
+  }),
+  prescriptions: many(prescriptions),
+  claimSubmissions: many(claimSubmissions),
+  payments: many(paymentTransactions),
+}));
+
+export const paymentTransactionsRelations = relations(paymentTransactions, ({ one }) => ({
+  encounter: one(encounters, {
+    fields: [paymentTransactions.encounterId],
+    references: [encounters.id],
+  }),
+  facility: one(facilities, {
+    fields: [paymentTransactions.facilityId],
+    references: [facilities.id],
+  }),
+  patient: one(patients, {
+    fields: [paymentTransactions.patientId],
+    references: [patients.id],
+  }),
+  collector: one(users, {
+    fields: [paymentTransactions.collectedBy],
     references: [users.id],
   }),
 }));
 
-export const refreshSessionsRelations = relations(refreshSessions, ({ one }) => ({
-  user: one(users, {
-    fields: [refreshSessions.userId],
-    references: [users.id],
+export const prescriptionsRelations = relations(prescriptions, ({ one }) => ({
+  encounter: one(encounters, {
+    fields: [prescriptions.encounterId],
+    references: [encounters.id],
+  }),
+  patient: one(patients, {
+    fields: [prescriptions.patientId],
+    references: [patients.id],
+  }),
+  clinician: one(clinicians, {
+    fields: [prescriptions.clinicianId],
+    references: [clinicians.id],
   }),
 }));
 
-export const projectsRelations = relations(projects, ({ one, many }) => ({
-  company: one(companies, {
-    fields: [projects.companyId],
-    references: [companies.id],
+export const claimSubmissionsRelations = relations(claimSubmissions, ({ one, many }) => ({
+  encounter: one(encounters, {
+    fields: [claimSubmissions.encounterId],
+    references: [encounters.id],
   }),
-  dossierConfig: one(dossierConfig, {
-    fields: [projects.id],
-    references: [dossierConfig.projectId],
+  facility: one(facilities, {
+    fields: [claimSubmissions.facilityId],
+    references: [facilities.id],
   }),
-  dossierConfigs: many(dossierConfig),
-  members: many(projectMembers),
-  documents: many(projectDocuments),
-  auditLogs: many(auditLogs),
-  packageArchives: many(packageArchives),
+  remittanceLines: many(remittanceLines),
 }));
 
-export const dossierConfigRelations = relations(dossierConfig, ({ one }) => ({
-  project: one(projects, {
-    fields: [dossierConfig.projectId],
-    references: [projects.id],
+export const remittanceLinesRelations = relations(remittanceLines, ({ one }) => ({
+  claimSubmission: one(claimSubmissions, {
+    fields: [remittanceLines.claimSubmissionId],
+    references: [claimSubmissions.id],
   }),
 }));
 
-export const projectMembersRelations = relations(projectMembers, ({ one }) => ({
-  project: one(projects, {
-    fields: [projectMembers.projectId],
-    references: [projects.id],
-  }),
-  user: one(users, {
-    fields: [projectMembers.userId],
-    references: [users.id],
-  }),
-}));
-
-export const projectDocumentsRelations = relations(projectDocuments, ({ one }) => ({
-  project: one(projects, {
-    fields: [projectDocuments.projectId],
-    references: [projects.id],
-  }),
-}));
-
-export const auditLogsRelations = relations(auditLogs, ({ one }) => ({
-  project: one(projects, {
-    fields: [auditLogs.projectId],
-    references: [projects.id],
-  }),
-}));
-
-export const packageArchivesRelations = relations(packageArchives, ({ one }) => ({
-  project: one(projects, {
-    fields: [packageArchives.projectId],
-    references: [projects.id],
+export const hubTransactionsRelations = relations(hubTransactions, ({ one }) => ({
+  facility: one(facilities, {
+    fields: [hubTransactions.facilityId],
+    references: [facilities.id],
   }),
 }));
 
 // ─── TYPES ───────────────────────────────────────────────────────────────────
+export type Facility = typeof facilities.$inferSelect;
+export type NewFacility = typeof facilities.$inferInsert;
+
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 
-export type RefreshSession = typeof refreshSessions.$inferSelect;
-export type NewRefreshSession = typeof refreshSessions.$inferInsert;
+export type Clinician = typeof clinicians.$inferSelect;
+export type NewClinician = typeof clinicians.$inferInsert;
 
-export type Project = typeof projects.$inferSelect;
-export type NewProject = typeof projects.$inferInsert;
+export type Patient = typeof patients.$inferSelect;
+export type NewPatient = typeof patients.$inferInsert;
 
-export type DossierConfig = typeof dossierConfig.$inferSelect;
-export type NewDossierConfig = typeof dossierConfig.$inferInsert;
+export type PatientPolicy = typeof patientPolicies.$inferSelect;
+export type NewPatientPolicy = typeof patientPolicies.$inferInsert;
 
-export type ProjectMember = typeof projectMembers.$inferSelect;
-export type NewProjectMember = typeof projectMembers.$inferInsert;
+export type Encounter = typeof encounters.$inferSelect;
+export type NewEncounter = typeof encounters.$inferInsert;
 
-export type ProjectDocument = typeof projectDocuments.$inferSelect;
-export type NewProjectDocument = typeof projectDocuments.$inferInsert;
+export type PaymentTransaction = typeof paymentTransactions.$inferSelect;
+export type NewPaymentTransaction = typeof paymentTransactions.$inferInsert;
+
+export type Prescription = typeof prescriptions.$inferSelect;
+export type NewPrescription = typeof prescriptions.$inferInsert;
+
+export type ClaimSubmission = typeof claimSubmissions.$inferSelect;
+export type NewClaimSubmission = typeof claimSubmissions.$inferInsert;
+
+export type RemittanceLine = typeof remittanceLines.$inferSelect;
+export type NewRemittanceLine = typeof remittanceLines.$inferInsert;
+
+export type HubTransaction = typeof hubTransactions.$inferSelect;
+export type NewHubTransaction = typeof hubTransactions.$inferInsert;
 
 export type AuditLog = typeof auditLogs.$inferSelect;
 export type NewAuditLog = typeof auditLogs.$inferInsert;
 
-export type PackageArchive = typeof packageArchives.$inferSelect;
-export type NewPackageArchive = typeof packageArchives.$inferInsert;
-
-export type Company = typeof companies.$inferSelect;
-export type NewCompany = typeof companies.$inferInsert;
-
-export type CompanyMember = typeof companyMembers.$inferSelect;
-export type NewCompanyMember = typeof companyMembers.$inferInsert;
-
+export type Icd10Code = typeof icd10Codes.$inferSelect;
+export type CptCode = typeof cptCodes.$inferSelect;
+export type DrugCode = typeof drugCodes.$inferSelect;

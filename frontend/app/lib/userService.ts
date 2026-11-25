@@ -1,10 +1,10 @@
 import { api } from "./axios";
 
 export interface UserItem {
-  id: number;
+  id: string;
   name: string | null;
   email: string;
-  role: "user" | "admin" | "superadmin";
+  role: string;
   isBlocked: boolean;
   createdAt: string;
   updatedAt: string;
@@ -14,7 +14,7 @@ export interface ListUsersParams {
   page?: number;
   limit?: number;
   search?: string;
-  role?: "user" | "admin" | "superadmin";
+  role?: string;
   isBlocked?: boolean;
 }
 
@@ -32,7 +32,7 @@ export interface CreateUserInput {
   name?: string;
   email: string;
   password?: string;
-  role: "user" | "admin" | "superadmin";
+  role: string;
 }
 
 export interface CreateUserResponseData {
@@ -43,13 +43,10 @@ export interface CreateUserResponseData {
 export interface UpdateUserInput {
   name?: string;
   email?: string;
-  role?: "user" | "admin" | "superadmin";
+  role?: string;
 }
 
 export class UserService {
-  /**
-   * List users with pagination, search filter, and role/blocked filters
-   */
   static async listUsers(params: ListUsersParams = {}): Promise<PaginatedUsersResponse> {
     const response = await api.get<{ success: boolean; data: PaginatedUsersResponse }>(
       "/admin/users",
@@ -58,19 +55,13 @@ export class UserService {
     return response.data.data;
   }
 
-  /**
-   * Get single user details by ID
-   */
-  static async getUserById(id: number): Promise<UserItem> {
+  static async getUserById(id: string | number): Promise<UserItem> {
     const response = await api.get<{ success: boolean; data: { user: UserItem } }>(
       `/admin/users/${id}`
     );
     return response.data.data.user;
   }
 
-  /**
-   * Create a single user. Triggers background welcome email with login credentials.
-   */
   static async createUser(data: CreateUserInput): Promise<CreateUserResponseData> {
     const response = await api.post<{
       success: boolean;
@@ -80,10 +71,7 @@ export class UserService {
     return response.data.data;
   }
 
-  /**
-   * Update existing user details (name, email, role)
-   */
-  static async updateUser(id: number, data: UpdateUserInput): Promise<UserItem> {
+  static async updateUser(id: string | number, data: UpdateUserInput): Promise<UserItem> {
     const response = await api.patch<{
       success: boolean;
       message: string;
@@ -92,10 +80,7 @@ export class UserService {
     return response.data.data.user;
   }
 
-  /**
-   * Block user account and revoke all active refresh sessions
-   */
-  static async blockUser(id: number): Promise<UserItem> {
+  static async blockUser(id: string | number): Promise<UserItem> {
     const response = await api.patch<{
       success: boolean;
       message: string;
@@ -104,10 +89,7 @@ export class UserService {
     return response.data.data.user;
   }
 
-  /**
-   * Unblock user account
-   */
-  static async unblockUser(id: number): Promise<UserItem> {
+  static async unblockUser(id: string | number): Promise<UserItem> {
     const response = await api.patch<{
       success: boolean;
       message: string;
@@ -116,14 +98,11 @@ export class UserService {
     return response.data.data.user;
   }
 
-  /**
-   * Permanently delete user account
-   */
-  static async deleteUser(id: number): Promise<{ id: number; email: string }> {
+  static async deleteUser(id: string | number): Promise<{ id: string | number; email: string }> {
     const response = await api.delete<{
       success: boolean;
       message: string;
-      data: { user: { id: number; email: string } };
+      data: { user: { id: string | number; email: string } };
     }>(`/admin/users/${id}`);
     return response.data.data.user;
   }

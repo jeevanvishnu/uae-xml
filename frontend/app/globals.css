@@ -3,7 +3,7 @@
 @variant dark (&:where(.dark, [data-theme="dark"], .dark *));
 
 @plugin "daisyui" {
-  themes: dark, light;
+  themes: dark;
 }
 
 /* 1. Default (Dark Navy Theme) Variables */
@@ -40,34 +40,7 @@ html[data-theme="dark"] {
   --shadow-focus: 0 0 0 3px rgba(2, 132, 199, 0.3);
 }
 
-/* 2. Light (White Theme) Overrides */
-html[data-theme="light"],
-html.light {
-  --color-bg: #F8FAFC !important;
-  --color-surface: #FFFFFF !important;
-  --color-surface-raised: #F1F5F9 !important;
-  --color-border: #E2E8F0 !important;
-  --color-border-strong: #CBD5E1 !important;
-  --color-primary: #0F172A !important;
-  --color-primary-dark: #FFFFFF !important;
-  --color-primary-mid: #E2E8F0 !important;
-  --color-secondary: #475569 !important;
-  --color-muted: #64748B !important;
-  --color-accent: #0284C7 !important;
-  --color-accent-hover: #0369A1 !important;
-  --color-accent-light: #E0F2FE !important;
-  --color-accent-border: #BAE6FD !important;
-  --color-text-on-accent: #FFFFFF !important;
-  --color-success: #10B981 !important;
-  --color-error: #DC2626 !important;
-  --color-warning: #F59E0B !important;
 
-  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.05);
-  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.06);
-  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.08);
-  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.12);
-  --shadow-focus: 0 0 0 3px rgba(2, 132, 199, 0.25);
-}
 
 /* 3. Scoped Dark Theme (Enforces Dark Navy on Home page & Auth Modal) */
 [data-theme="dark"],

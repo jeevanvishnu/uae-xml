@@ -6,10 +6,19 @@ import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 
 export interface User {
-  id: number;
+  id: string;
   name: string;
   email: string;
   role: string;
+  facilityId?: string | null;
+  facility?: {
+    id: string;
+    name: string;
+    licenseId: string;
+    emirate: string;
+    facilityType?: string;
+    dispositionFlag?: string;
+  } | null;
   createdAt?: string;
 }
 

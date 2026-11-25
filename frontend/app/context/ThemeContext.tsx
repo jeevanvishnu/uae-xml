@@ -1,8 +1,8 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useEffect } from "react";
 
-type Theme = "dark" | "light";
+type Theme = "dark";
 
 interface ThemeContextType {
   theme: Theme;
@@ -10,59 +10,42 @@ interface ThemeContextType {
   setTheme: (theme: Theme) => void;
 }
 
-const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
+const ThemeContext = createContext<ThemeContextType>({
+  theme: "dark",
+  toggleTheme: () => {},
+  setTheme: () => {},
+});
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>("dark");
-  const [mounted, setMounted] = useState(false);
-
   useEffect(() => {
-    setMounted(true);
-    const savedTheme = (localStorage.getItem("mosctd_theme") || localStorage.getItem("ctdex_theme") || localStorage.getItem("itave_theme") || localStorage.getItem("ectc_theme")) as Theme | null;
-    if (savedTheme === "light" || savedTheme === "dark") {
-      setThemeState(savedTheme);
-      applyTheme(savedTheme);
-    } else {
-      // Default to dark navy theme
-      setThemeState("dark");
-      applyTheme("dark");
+    // Permanently enforce dark theme across the application
+    const root = document.documentElement;
+    root.setAttribute("data-theme", "dark");
+    root.classList.add("dark");
+    root.classList.remove("light");
+    try {
+      localStorage.removeItem("mosctd_theme");
+      localStorage.removeItem("ctdex_theme");
+      localStorage.removeItem("itave_theme");
+      localStorage.removeItem("ectc_theme");
+    } catch {
+      // Ignore localStorage errors
     }
   }, []);
 
-  const applyTheme = (newTheme: Theme) => {
-    const root = document.documentElement;
-    root.setAttribute("data-theme", newTheme);
-    if (newTheme === "light") {
-      root.classList.add("light");
-      root.classList.remove("dark");
-    } else {
-      root.classList.add("dark");
-      root.classList.remove("light");
-    }
-  };
-
-  const setTheme = (newTheme: Theme) => {
-    setThemeState(newTheme);
-    localStorage.setItem("mosctd_theme", newTheme);
-    applyTheme(newTheme);
-  };
-
-  const toggleTheme = () => {
-    const nextTheme = theme === "dark" ? "light" : "dark";
-    setTheme(nextTheme);
-  };
-
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme, setTheme }}>
+    <ThemeContext.Provider
+      value={{
+        theme: "dark",
+        toggleTheme: () => {},
+        setTheme: () => {},
+      }}
+    >
       {children}
     </ThemeContext.Provider>
   );
 }
 
 export function useTheme() {
-  const context = useContext(ThemeContext);
-  if (!context) {
-    throw new Error("useTheme must be used within a ThemeProvider");
-  }
-  return context;
+  return useContext(ThemeContext);
 }

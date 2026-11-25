@@ -6,7 +6,6 @@ import { Sidebar } from "./Sidebar";
 import { Bell, List, User, CaretRight, CheckCircle } from "@phosphor-icons/react";
 import { useAuth } from "../context/AuthContext";
 import { useAuthModal } from "./AuthModalContext";
-import { ThemeToggle } from "./ThemeToggle";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 import { useTranslations } from "next-intl";
 
@@ -119,8 +118,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
           <div className="flex items-center gap-3">
             <LanguageSwitcher compact />
-
-            <ThemeToggle />
 
             <div className="relative">
               <button

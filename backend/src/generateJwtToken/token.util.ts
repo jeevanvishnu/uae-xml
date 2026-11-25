@@ -21,7 +21,7 @@ export function generateAccessToken(payload: {
   id: string;
   email: string;
   role: string;
-  companyId: string | null;
+  facilityId: string | null;
 }): string {
   return jwt.sign(payload, ACCESS_TOKEN_SECRET!, { expiresIn: "15m" } as SignOptions);
 }
@@ -44,4 +44,3 @@ export function verifyAccessToken(token: string) {
 export function verifyRefreshToken(token: string) {
   return jwt.verify(token, REFRESH_TOKEN_SECRET!);
 }
-

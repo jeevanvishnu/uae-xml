@@ -4,7 +4,6 @@ import React, { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { Link, useRouter } from "../../../i18n/routing";
 import { Key, LockKey, Eye, EyeSlash, ArrowRight, CheckCircle, CircleNotch } from "@phosphor-icons/react";
-import { ThemeToggle } from "../../components/ThemeToggle";
 import { LanguageSwitcher } from "../../components/LanguageSwitcher";
 import { api } from "../../lib/axios";
 import { toast } from "sonner";
@@ -172,7 +171,6 @@ export default function ResetPasswordPage() {
     <div className="min-h-screen bg-bg text-secondary flex flex-col justify-center items-center px-4 relative overflow-hidden">
       <div className="absolute top-4 right-4 z-20 flex items-center gap-3">
         <LanguageSwitcher compact />
-        <ThemeToggle showLabel />
       </div>
 
       <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-96 h-96 bg-accent/10 blur-[130px] rounded-full pointer-events-none" />

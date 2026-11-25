@@ -91,7 +91,7 @@ export default function AccountSettingsPage() {
 
   // Active user selections for Modals
   const [selectedUser, setSelectedUser] = useState<UserItem | null>(null);
-  const [togglingBlockId, setTogglingBlockId] = useState<number | null>(null);
+  const [togglingBlockId, setTogglingBlockId] = useState<string | null>(null);
 
   // Form states
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -136,7 +136,7 @@ export default function AccountSettingsPage() {
       };
     }
     return {
-      id: 0,
+      id: "",
       name: "User",
       email: "user@example.com",
       role: "user",
