@@ -6,13 +6,14 @@ import { ThemeProvider } from "../context/ThemeContext";
 import { AuthModalProvider } from "./AuthModalContext";
 import { AuthModal } from "./AuthModal";
 import { Toaster } from "sonner";
+import { AuthRouteGuard } from "./auth/AuthRouteGuard";
 
 export function ClientProviders({ children }: { children: React.ReactNode }) {
   return (
     <ThemeProvider>
       <AuthProvider>
         <AuthModalProvider>
-          {children}
+          <AuthRouteGuard>{children}</AuthRouteGuard>
           <AuthModal />
           <Toaster position="top-right" richColors />
         </AuthModalProvider>

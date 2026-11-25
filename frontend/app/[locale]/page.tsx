@@ -236,7 +236,12 @@ export default function HomePage() {
           />
 
           {/* Floating Pill Navbar (Reference Style) */}
-          <header className="relative z-20 max-w-5xl mx-auto rounded-full bg-slate-950 text-white px-4 sm:px-6 py-2.5 flex items-center justify-between gap-4 shadow-lg shadow-slate-950/15">
+          <motion.header
+            initial={{ opacity: 0, y: -16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+            className="relative z-20 max-w-5xl mx-auto rounded-full bg-slate-950 text-white px-4 sm:px-6 py-2.5 flex items-center justify-between gap-4 shadow-lg shadow-slate-950/15"
+          >
             <Link
               href="/"
               className="flex items-center gap-2 pl-1 text-base sm:text-lg font-semibold tracking-tight text-white"
@@ -273,36 +278,77 @@ export default function HomePage() {
             >
               Login
             </Link>
-          </header>
+          </motion.header>
 
           {/* Centered Hero Copy */}
           <div className="relative z-10 text-center max-w-3xl mx-auto pt-12 sm:pt-14 space-y-4">
-            <div className="inline-flex items-center px-4 py-1.5 rounded-full bg-white/95 border border-blue-200/80 text-blue-700 text-[10px] font-semibold tracking-widest uppercase shadow-xs">
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+              className="inline-flex items-center px-4 py-1.5 rounded-full bg-white/95 border border-blue-200/80 text-blue-700 text-[10px] font-semibold tracking-widest uppercase shadow-xs transition-all duration-300 hover:scale-105 hover:border-blue-300 hover:shadow-sm select-none"
+            >
               UAE Healthcare e-Claims Platform
-            </div>
+            </motion.div>
 
-            <h1 className="text-3xl sm:text-4xl lg:text-[44px] font-semibold text-slate-950 tracking-tight leading-[1.15]">
+            <motion.h1
+              initial={{ opacity: 0, y: 32, scale: 0.94 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{
+                duration: 0.85,
+                delay: 0.18,
+                ease: [0.16, 1, 0.3, 1],
+              }}
+              className="text-3xl sm:text-4xl lg:text-[44px] font-semibold text-slate-950 tracking-tight leading-[1.15] origin-center will-change-transform"
+            >
               Turn clinical encounters into compliant e-Claims
-            </h1>
+            </motion.h1>
 
-            <p className="text-xs sm:text-sm text-slate-600 leading-relaxed max-w-lg mx-auto font-normal">
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{
+                duration: 0.7,
+                delay: 0.3,
+                ease: [0.16, 1, 0.3, 1],
+              }}
+              className="text-xs sm:text-sm text-slate-600 leading-relaxed max-w-lg mx-auto font-normal"
+            >
               MosCtd unifies reception check-in, ICD-10/CPT coding, DDC pharmacy
               dispensing, and MoHAP Riayati XML submissions in one workspace.
-            </p>
+            </motion.p>
 
-            <div className="pt-2 flex flex-wrap items-center justify-center gap-3">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{
+                duration: 0.7,
+                delay: 0.38,
+                ease: [0.16, 1, 0.3, 1],
+              }}
+              className="pt-2 flex flex-wrap items-center justify-center gap-3"
+            >
               <Link
                 href={isAuthenticated ? dashboardHref : "/login"}
-                className="px-6 py-3 rounded-full bg-blue-700 hover:bg-blue-800 text-white text-xs sm:text-sm font-semibold shadow-md shadow-blue-700/20 transition-all inline-flex items-center gap-2"
+                className="group px-6 py-3 rounded-full bg-blue-700 hover:bg-blue-800 text-white text-xs sm:text-sm font-semibold shadow-md shadow-blue-700/20 hover:shadow-lg hover:shadow-blue-700/30 transition-all duration-300 inline-flex items-center gap-2 hover:scale-[1.03] active:scale-[0.98]"
               >
                 <span>Get Started</span>
-                <ArrowRight size={15} weight="bold" />
+                <ArrowRight size={15} weight="bold" className="transition-transform duration-300 group-hover:translate-x-1" />
               </Link>
-            </div>
+            </motion.div>
           </div>
 
-          {/* Layered Dashboard Preview Image */}
-          <div className="relative z-10 max-w-6xl mx-auto mt-10 sm:mt-12">
+          {/* Layered Dashboard Preview Image - Smooth Down-to-Up Entrance (No Hover) */}
+          <motion.div
+            initial={{ opacity: 0, y: 70, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{
+              duration: 1.05,
+              delay: 0.45,
+              ease: [0.16, 1, 0.3, 1],
+            }}
+            className="relative z-10 max-w-6xl mx-auto mt-10 sm:mt-12 will-change-transform"
+          >
             <div className="p-2.5 sm:p-4 pb-0 sm:pb-0 rounded-t-2xl sm:rounded-t-3xl bg-white/65 backdrop-blur-md border border-b-0 border-white/90 shadow-2xl shadow-blue-950/10">
               <img
                 src="/images/hero-dashboard.jpg"
@@ -310,7 +356,7 @@ export default function HomePage() {
                 className="w-full h-auto rounded-t-xl sm:rounded-t-2xl border border-b-0 border-slate-200/80 block"
               />
             </div>
-          </div>
+          </motion.div>
         </section>
 
         {/* 2.5 About Section (60% White Canvas, Scroll-to-Reveal Text with Motion) */}
@@ -609,7 +655,7 @@ export default function HomePage() {
                           required
                           value={contactForm.name}
                           onChange={handleContactChange}
-                          placeholder="Dr. Tariq Al Hashimi"
+                          placeholder="Enter your full name"
                           className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700/15 transition-all"
                         />
                       </div>
@@ -625,7 +671,7 @@ export default function HomePage() {
                           required
                           value={contactForm.email}
                           onChange={handleContactChange}
-                          placeholder="name@clinic.ae"
+                          placeholder="Enter your work email"
                           className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700/15 transition-all"
                         />
                       </div>
@@ -642,7 +688,7 @@ export default function HomePage() {
                           type="tel"
                           value={contactForm.phone}
                           onChange={handleContactChange}
-                          placeholder="+971 50 000 0000"
+                          placeholder="Enter your phone number"
                           className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700/15 transition-all"
                         />
                       </div>
@@ -657,7 +703,7 @@ export default function HomePage() {
                           type="text"
                           value={contactForm.facility}
                           onChange={handleContactChange}
-                          placeholder="MOSCTD Medical Center"
+                          placeholder="Enter your facility or clinic name"
                           className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700/15 transition-all"
                         />
                       </div>
@@ -674,7 +720,7 @@ export default function HomePage() {
                         required
                         value={contactForm.message}
                         onChange={handleContactChange}
-                        placeholder="Tell us about your facility, e-Claims volume, or integration needs..."
+                        placeholder="Enter your message..."
                         className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-700/15 transition-all resize-none"
                       />
                     </div>

@@ -1,21 +1,23 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/i18n/routing";
+import { useAuth } from "@/app/context/AuthContext";
+import { getDashboardForRole } from "@/app/lib/roleRouting";
+import { AuthLoadingScreen } from "@/app/components/auth/AuthRouteGuard";
 
 export default function DashboardRootPage() {
   const router = useRouter();
+  const { user, isAuthenticated, isLoading } = useAuth();
 
   useEffect(() => {
-    router.replace("/dashboard/reception");
-  }, [router]);
+    if (isLoading) return;
+    if (!isAuthenticated || !user) {
+      router.replace("/login");
+    } else {
+      router.replace(getDashboardForRole(user.role));
+    }
+  }, [isLoading, isAuthenticated, user, router]);
 
-  return (
-    <div className="min-h-screen bg-[#0D1117] flex items-center justify-center text-slate-400 font-mono text-xs">
-      <div className="flex items-center gap-2">
-        <span className="w-2 h-2 rounded-full bg-sky-400 animate-ping"></span>
-        <span>Loading Reception Workstation...</span>
-      </div>
-    </div>
-  );
+  return <AuthLoadingScreen message="Loading your workspace..." />;
 }
