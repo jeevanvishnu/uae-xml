@@ -1,32 +1,22 @@
 "use client";
 
-import React, { useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { useAuth } from "@/app/context/AuthContext";
-import { HealthcareNav } from "@/app/components/HealthcareNav";
+import React from "react";
+import { PharmacyProvider } from "@/app/context/PharmacyContext";
+import { PharmacySidebar } from "@/app/components/pharmacy/PharmacySidebar";
 
 export default function PharmacyLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const { isAuthenticated, isLoading } = useAuth();
-  const router = useRouter();
-
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      router.push("/login");
-    }
-  }, [isLoading, isAuthenticated, router]);
-
   return (
-    <div className="min-h-screen bg-[var(--color-bg,#0D1117)] text-[var(--color-primary,#E2E8F0)] flex flex-col font-sans">
-      <HealthcareNav
-        currentModuleTitle="Pharmacy e-Prescription (eRx) Verification & Medication Dispensing Desk"
-        badgeText="Pharmacist"
-        badgeColor="text-emerald-400 bg-emerald-500/10 border-emerald-500/20"
-      />
-      <main className="flex-1 p-6">{children}</main>
-    </div>
+    <PharmacyProvider>
+      <div className="min-h-screen bg-[#EFF2F6] text-slate-800 flex flex-col md:flex-row font-sans">
+        <PharmacySidebar />
+        <main className="flex-1 min-w-0 p-4 md:p-8 overflow-y-auto min-h-screen">
+          {children}
+        </main>
+      </div>
+    </PharmacyProvider>
   );
 }
