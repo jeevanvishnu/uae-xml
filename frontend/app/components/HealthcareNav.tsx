@@ -41,7 +41,7 @@ export function HealthcareNav({
             <div>
               <div className="flex items-center gap-2">
                 <span className="font-semibold text-sm tracking-wide text-white">
-                  {user?.facility?.name || "Al Noor Medical Center"}
+                  {user?.facility?.name || "MOSCTD"}
                 </span>
                 <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                   {user?.facility?.emirate === "DXB" ? "DHA eClaimLink" : "MoHAP Riayati"}

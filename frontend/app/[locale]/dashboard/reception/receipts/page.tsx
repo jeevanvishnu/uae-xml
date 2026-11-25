@@ -104,7 +104,7 @@ export default function DashboardFrontDeskReceiptsPage() {
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `AlNoor_Receipts_Shift_${shift.shiftDate}.csv`);
+    link.setAttribute("download", `MOSCTD_Receipts_Shift_${shift.shiftDate}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

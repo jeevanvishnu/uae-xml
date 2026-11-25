@@ -889,7 +889,7 @@ export function BillingProvider({ children }: { children: ReactNode }) {
   >({});
 
   const facilityProfile = {
-    name: "Al Noor Clinic",
+    name: "MOSCTD",
     licenseNo: "DHA-F-0048291",
     dispositionFlag: "PRODUCTION" as const,
     officerName: "Zainab Al-Mansoor",

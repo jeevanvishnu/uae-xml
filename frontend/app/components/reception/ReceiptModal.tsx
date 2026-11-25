@@ -78,9 +78,9 @@ export function ReceiptModal({ receipt, onClose }: ReceiptModalProps) {
             {/* Clinic Branding */}
             <div className="text-center pb-2 border-b border-dashed border-slate-300">
               <div className="font-bold text-sm tracking-wider uppercase text-slate-950">
-                Al Noor Medical Center LLC
+                MOSCTD
               </div>
-              <div className="text-[11px] text-slate-600">مركز النور الطبي ذ.م.م</div>
+              <div className="text-[11px] text-slate-600">MOSCTD</div>
               <div className="text-[10px] text-slate-500 mt-1">
                 DHA Facility ID: FAC-DXB-98765 &bull; TRN: 100482910300003
               </div>

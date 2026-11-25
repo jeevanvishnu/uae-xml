@@ -246,7 +246,7 @@ export function generateClaimSubmissionXml(encounter: DoctorEncounter): string {
   return `<?xml version="1.0" encoding="UTF-8"?>
 <Claim.Submission>
   <Header>
-    <SenderID>ALNOOR-CLINIC-DXB</SenderID>
+    <SenderID>MOSCTD-DXB</SenderID>
     <ReceiverID>${encounter.insurance.payerId}</ReceiverID>
     <TransactionDate>${formatUaeDate(now)}</TransactionDate>
     <RecordCount>1</RecordCount>
@@ -290,7 +290,7 @@ export function generatePriorRequestXml(
   return `<?xml version="1.0" encoding="UTF-8"?>
 <Prior.Request>
   <Header>
-    <SenderID>ALNOOR-CLINIC-DXB</SenderID>
+    <SenderID>MOSCTD-DXB</SenderID>
     <ReceiverID>${encounter.insurance.payerId}</ReceiverID>
     <TransactionDate>${formatUaeDate(now)}</TransactionDate>
     <RecordCount>1</RecordCount>
@@ -347,7 +347,7 @@ export function generateEPrescriptionXml(
   return `<?xml version="1.0" encoding="UTF-8"?>
 <ePrescription>
   <Header>
-    <SenderID>ALNOOR-CLINIC-DXB</SenderID>
+    <SenderID>MOSCTD-DXB</SenderID>
     <ReceiverID>RIAYATI-ERX-HUB</ReceiverID>
     <TransactionDate>${formatUaeDate(now)}</TransactionDate>
     <RecordCount>${medications.length}</RecordCount>

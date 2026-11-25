@@ -77,7 +77,7 @@ export function Sidebar() {
         </div>
         <div className="overflow-hidden">
           <h2 className="font-bold text-sm text-white truncate">
-            {user?.facility?.name || "Al Noor Medical"}
+            {user?.facility?.name || "MOSCTD"}
           </h2>
           <div className="flex items-center gap-1.5 mt-0.5">
             <span className="text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">

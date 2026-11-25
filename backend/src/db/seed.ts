@@ -16,7 +16,7 @@ async function seedDatabase() {
   console.log("🌱 Starting UAE Healthcare & Claims Platform Database Seeding...");
 
   try {
-    // 1. Seed Default Facility (Al Noor Medical Center - Northern Emirates / Riayati)
+    // 1. Seed Default Facility (MOSCTD - Northern Emirates / Riayati)
     const [existingFacility] = await db
       .select()
       .from(facilities)
@@ -29,14 +29,14 @@ async function seedDatabase() {
       const [fac] = await db
         .insert(facilities)
         .values({
-          name: "Al Noor Medical Center",
+          name: "MOSCTD",
           emirate: "NE",
           licenseId: "FAC-MOH-98765",
           facilityType: "CLINIC",
           phone: "+971 6 555 1234",
-          email: "info@alnoorclinic.ae",
+          email: "info@mosctd.ae",
           address: "King Faisal St, Sharjah, UAE",
-          hubUsername: "ALNOOR_NE_01",
+          hubUsername: "MOSCTD_NE_01",
           hubPasswordEnc: "MOH_SECURE_TEST_CRED",
           dispositionFlag: "TEST",
         })
@@ -62,28 +62,28 @@ async function seedDatabase() {
         facilityId: null,
       },
       {
-        email: "reception@alnoor.ae",
+        email: "reception@mosctd.ae",
         password: defaultPasswordHash,
         name: "Sara Al Blooshi (Reception)",
         role: "reception" as const,
         facilityId,
       },
       {
-        email: "doctor@alnoor.ae",
+        email: "doctor@mosctd.ae",
         password: defaultPasswordHash,
         name: "Dr. Tariq Al Hashimi",
         role: "doctor" as const,
         facilityId,
       },
       {
-        email: "billing@alnoor.ae",
+        email: "billing@mosctd.ae",
         password: defaultPasswordHash,
         name: "Omar Farooq (Billing Officer)",
         role: "billing" as const,
         facilityId,
       },
       {
-        email: "pharmacy@alnoor.ae",
+        email: "pharmacy@mosctd.ae",
         password: defaultPasswordHash,
         name: "Laila Nader (Pharmacist)",
         role: "pharmacist" as const,

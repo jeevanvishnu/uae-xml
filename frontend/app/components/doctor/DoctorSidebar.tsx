@@ -80,7 +80,7 @@ export function DoctorSidebar() {
           </div>
           <div>
             <span className="font-extrabold text-base tracking-tight text-slate-900 block leading-tight">
-              Al Noor Clinic
+              MOSCTD
             </span>
             <span className="text-[11px] font-semibold text-blue-600 uppercase tracking-wider">
               Physician Portal
@@ -191,7 +191,7 @@ export function DoctorSidebar() {
           <div className="w-7 h-7 rounded-full bg-blue-600 text-white flex items-center justify-center">
             <Hospital size={15} weight="bold" />
           </div>
-          <span>Al Noor Clinic</span>
+          <span>MOSCTD</span>
         </div>
       </div>
 

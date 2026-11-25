@@ -138,7 +138,7 @@ export interface PharmacyFacilityProfile {
 }
 
 const DEFAULT_FACILITY_PROFILE: PharmacyFacilityProfile = {
-  pharmacyName: "Al Noor Central Pharmacy",
+  pharmacyName: "MOSCTD Central Pharmacy",
   pharmacyLicenseId: "PHARM-DXB-44019",
   pharmacistName: "Dr. Nadia Al Mansoori, RPh",
   pharmacistLicenseId: "DHA-PH-88421",
@@ -384,7 +384,7 @@ const INITIAL_ERX_QUEUE: ErxOrder[] = [
     prescriber: {
       name: "Dr. Tariq Al Hashimi",
       licenseNo: "DHA-P-44912",
-      facilityName: "Al Noor Medical Center",
+      facilityName: "MOSCTD",
       specialty: "Internal Medicine",
     },
     insurance: {
@@ -566,7 +566,7 @@ const INITIAL_ERX_QUEUE: ErxOrder[] = [
     prescriber: {
       name: "Dr. Samira Al Qasimi",
       licenseNo: "DHA-P-60118",
-      facilityName: "Al Noor Medical Center",
+      facilityName: "MOSCTD",
       specialty: "Pulmonology",
     },
     insurance: {

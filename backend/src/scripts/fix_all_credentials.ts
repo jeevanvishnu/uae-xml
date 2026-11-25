@@ -15,12 +15,12 @@ async function fixAllCredentials() {
 
   const accounts = [
     { email: "superadmin@gmail.com", role: "superadmin" as const, name: "System Superadmin", facilityId: null },
-    { email: "admin@alnoor.ae", role: "admin" as const, name: "Clinic Admin (Al Noor)", facilityId },
+    { email: "admin@mosctd.ae", role: "admin" as const, name: "Clinic Admin (MOSCTD)", facilityId },
     { email: "admin@gmail.com", role: "admin" as const, name: "Admin", facilityId },
-    { email: "reception@alnoor.ae", role: "reception" as const, name: "Sara Al Blooshi (Reception)", facilityId },
-    { email: "doctor@alnoor.ae", role: "doctor" as const, name: "Dr. Tariq Al Hashimi", facilityId },
-    { email: "billing@alnoor.ae", role: "billing" as const, name: "Omar Farooq (Billing)", facilityId },
-    { email: "pharmacy@alnoor.ae", role: "pharmacist" as const, name: "Laila Nader (Pharmacist)", facilityId },
+    { email: "reception@mosctd.ae", role: "reception" as const, name: "Sara Al Blooshi (Reception)", facilityId },
+    { email: "doctor@mosctd.ae", role: "doctor" as const, name: "Dr. Tariq Al Hashimi", facilityId },
+    { email: "billing@mosctd.ae", role: "billing" as const, name: "Omar Farooq (Billing)", facilityId },
+    { email: "pharmacy@mosctd.ae", role: "pharmacist" as const, name: "Laila Nader (Pharmacist)", facilityId },
   ];
 
   for (const acc of accounts) {

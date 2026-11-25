@@ -327,7 +327,7 @@ export default function ConsultationWorkbenchPage() {
               <div className="flex items-start justify-between border-b border-slate-200 pb-4">
                 <div>
                   <div className="text-base font-extrabold text-slate-900">
-                    Al Noor Clinic
+                    MOSCTD
                   </div>
                   <div className="text-[11px] text-slate-500">
                     Dubai Healthcare City &bull; DHA Facility
